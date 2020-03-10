@@ -104,7 +104,6 @@ nvidiaShieldAdb.prototype.getCurrentApp = function(callback) {
 	}
 
 	this.checkConnection();
-	console.log("NS: Get current app -> START");
 
 	// so it will run first
 	run_command();
@@ -113,5 +112,4 @@ nvidiaShieldAdb.prototype.getCurrentApp = function(callback) {
 nvidiaShieldAdb.prototype.stopGetCurrentApp = function() {
 	this.prev_current_app = null;
 	clearInterval(this.current_app_loop);
-	console.log("NS: Get current app -> STOP");
 }
