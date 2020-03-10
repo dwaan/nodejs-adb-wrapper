@@ -1,0 +1,16 @@
+{
+  "name": "nvidia-shield-adb",
+  "version": "1.0.0",
+  "description": "Node.js helper to connect to NVIDIA Shield (and possibly other android device) using adb",
+  "main": "index.js",
+  "scripts": {
+    "test": "node test.js"
+  },
+  "keywords": [
+    "node.js",
+    "adb",
+    "helper"
+  ],
+  "author": "Dwan",
+  "license": "MIT"
+}
