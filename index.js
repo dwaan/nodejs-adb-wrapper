@@ -90,9 +90,7 @@ nvidiaShieldAdb.prototype.sendKey = function(key, callback) {
 
 // Emit event: 'currentappchange'
 nvidiaShieldAdb.prototype.getCurrentApp = function(callback) {
-	this.checkConnection();
-	console.log("NS: Get current app -> START");
-	this.current_app_loop = setInterval(() => {
+	var run_command = () => {
 		exec('adb shell dumpsys window windows | grep -E mFocusedApp | cut -d / -f 1 | cut -d " " -f 7', (err, stdout, stderr) => {
 			if (err) {
 				console.log("NS: Error while getting current app info", stderr);
@@ -103,7 +101,14 @@ nvidiaShieldAdb.prototype.getCurrentApp = function(callback) {
 				if(callback) callback(this.prev_current_app);
 			}
 		});
-	}, 5000);
+	}
+
+	this.checkConnection();
+	console.log("NS: Get current app -> START");
+
+	// so it will run first
+	run_command();
+	this.current_app_loop = setInterval(run_command, 5000);
 }
 nvidiaShieldAdb.prototype.stopGetCurrentApp = function() {
 	this.prev_current_app = null;
