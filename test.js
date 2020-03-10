@@ -1,6 +1,6 @@
 var nvidiaShieldAdb = require('../nvidia-shield-adb');
 
-var shield = new nvidiaShieldAdb('192.168.1.106');
+var shield = new nvidiaShieldAdb('192.168.1.106', "/sdcard/Scripts/", 2500);
 
 shield.connect();
 

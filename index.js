@@ -6,7 +6,7 @@ let
 	EventEmitter = require('events')
 ;
 
-var nvidiaShieldAdb = module.exports = function(ip, path = "/sdcard/Scripts/", interval = 1000) {
+var nvidiaShieldAdb = module.exports = function(ip, path = "/sdcard/Scripts/", interval = 2500) {
 	EventEmitter.call(this);
 
 	this.path = path;
