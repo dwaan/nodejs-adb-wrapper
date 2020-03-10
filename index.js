@@ -56,18 +56,37 @@ nvidiaShieldAdb.prototype.wake = function(callback) {
 			this.emit("awake");
 
 			if(callback) callback();
+
+			clearInterval(this.are_you_awake_loop);
 		}
 	})
 }
 
-// Emit event: 'sleep'
+// Emit event: 'sleep' and 'awake'
 nvidiaShieldAdb.prototype.sleep = function(callback) {
+	var run_command = () => {
+		exec('adb shell dumpsys power | grep mHoldingDisplaySuspendBlocker', (err, stdout, stderr) => {
+			if (err) {
+				console.log("NS: Error while getting shield status", stderr);
+			} else {
+				if (stdout.trim() == 'mHoldingDisplaySuspendBlocker=true'){
+					clearInterval(this.are_you_awake_loop);
+
+					this.emit("awake");
+				}
+			}
+		});
+	}
+
 	this.checkConnection();
 	exec('adb shell input keyevent KEYCODE_SLEEP', (err, stdout, stderr) => {
 		if (err) {
 			console.log("NS: Error while sleeping up NVIDIA Shield", stderr);
 		} else {
 			this.emit("sleep");
+
+			// so it will run first
+			this.are_you_awake_loop = setInterval(run_command, 5000);
 
 			if(callback) callback();
 		}
