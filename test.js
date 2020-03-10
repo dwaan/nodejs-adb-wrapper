@@ -6,6 +6,9 @@ shield.connect();
 
 shield.on('ready', function() {
 	console.log("TS: Shield ready");
+	this.status((status) => {
+		console.log("TS: Shield status -> " + status);
+	})
 	this.getCurrentApp();
 });
 
