@@ -34,14 +34,14 @@ nvidiaShieldAdb.prototype.connect = function(interval = 5000) {
 					console.log("NS: Error while getting shield status", stderr);
 				} else {
 					if (stdout.trim() == 'mHoldingDisplaySuspendBlocker=true'){
-						if(this.sleep) {
+						if(this.is_sleep) {
 							this.emit("awake");
-							this.sleep = false;
+							this.is_sleep = false;
 						}
 					} else {
-						if(!this.sleep) {
+						if(!this.is_sleep) {
 							this.emit("sleep");
-							this.sleep = true;
+							this.is_sleep = true;
 						}
 					}
 				}
