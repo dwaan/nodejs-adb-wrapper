@@ -15,22 +15,23 @@ var nvidiaShieldAdb = module.exports = function(ip) {
 		process.exit();
 	} else {
 		this.ip = ip;
-		console.log("NS: Connecting to " + this.ip);
-		exec('adb connect ' + this.ip, (err, stdout, stderr) => {
-			if (err) {
-				console.log("NS: Error while connecting", stderr);
-			} else {
-				console.log("NS: " + stdout);
-				this.emit("ready");
-			}
-		});
 	}
 }
 util.inherits(nvidiaShieldAdb, EventEmitter);
 
+nvidiaShieldAdb.prototype.connect = function() {
+	exec('adb connect ' + this.ip, (err, stdout, stderr) => {
+		if (err) {
+			console.log("NS: Error while connecting", stderr);
+		} else {
+			this.emit("ready");
+		}
+	});
+}
+
 nvidiaShieldAdb.prototype.checkConnection = function() {
 	if(!this.ip) {
-		console.log("NS: Please connect to NVIDA Shield first");
+		console.log("NS: Please connect to NVIDIA Shield first");
 		process.exit();
 	}
 }
@@ -52,7 +53,6 @@ nvidiaShieldAdb.prototype.wake = function(callback) {
 		if (err) {
 			console.log("NS: Error while waking up NVIDIA Shield", stderr);
 		} else {
-			console.log("NS: NVIDIA Shiled -> Awake");
 			this.emit("awake");
 
 			if(callback) callback();
@@ -67,7 +67,6 @@ nvidiaShieldAdb.prototype.sleep = function(callback) {
 		if (err) {
 			console.log("NS: Error while sleeping up NVIDIA Shield", stderr);
 		} else {
-			console.log("NS: NVIDIA Shiled -> Sleep");
 			this.emit("sleep");
 
 			if(callback) callback();
@@ -82,8 +81,7 @@ nvidiaShieldAdb.prototype.sendKey = function(key, callback) {
 		if (err) {
 			console.log("NS: " + key + " -> Not Sent", stderr);
 		} else {
-			console.log("NS: " + key + " -> Sent");
-			this.emit("keysent");
+			this.emit("keysent", key);
 
 			if(callback) callback();
 		}
@@ -98,12 +96,11 @@ nvidiaShieldAdb.prototype.getCurrentApp = function(callback) {
 		exec('adb shell dumpsys window windows | grep -E mFocusedApp | cut -d / -f 1 | cut -d " " -f 7', (err, stdout, stderr) => {
 			if (err) {
 				console.log("NS: Error while getting current app info", stderr);
-			} else if(this.prev_current_app == null || this.prev_current_app != stdout) {
-				console.log("NS: Current app is -> " + stdout);
-				this.emit("currentappchange", stdout);
-				this.prev_current_app = stdout;
+			} else if(this.prev_current_app == null || this.prev_current_app != stdout.trim()) {
+				this.prev_current_app = stdout.trim();
+				this.emit("currentappchange", this.prev_current_app);
 
-				if(callback) callback(stdout);
+				if(callback) callback(this.prev_current_app);
 			}
 		});
 	}, 5000);
