@@ -5,14 +5,17 @@ var shield = new nvidiaShieldAdb('192.168.1.106');
 shield.connect();
 
 shield.on('ready', function() {
-	this.sleep();
+	console.log("TS: Shield ready");
+	this.getCurrentApp();
 });
 
 shield.on('awake', function(current_app) {
 	console.log("TS: Shield awake");
 });
+shield.on('sleep', function(current_app) {
+	console.log("TS: Shield sleep");
+});
 
 shield.on('currentappchange', function(current_app) {
 	console.log("TS: Current app -> " + current_app);
-	this.stopGetCurrentApp();
 });

@@ -6,7 +6,6 @@ let
 	EventEmitter = require('events')
 ;
 
-// Emit event: 'ready'
 var nvidiaShieldAdb = module.exports = function(ip) {
 	EventEmitter.call(this);
 
@@ -19,13 +18,37 @@ var nvidiaShieldAdb = module.exports = function(ip) {
 }
 util.inherits(nvidiaShieldAdb, EventEmitter);
 
-nvidiaShieldAdb.prototype.connect = function() {
+// Emit event: 'ready', "awake", "sleep"
+nvidiaShieldAdb.prototype.connect = function(interval = 5000) {
 	exec('adb connect ' + this.ip, (err, stdout, stderr) => {
 		if (err) {
 			console.log("NS: Error while connecting", stderr);
 		} else {
 			this.emit("ready");
 		}
+
+		// Main loop to check Shield status
+		var run_command = () => {
+			exec('adb shell dumpsys power | grep mHoldingDisplaySuspendBlocker', (err, stdout, stderr) => {
+				if (err) {
+					console.log("NS: Error while getting shield status", stderr);
+				} else {
+					if (stdout.trim() == 'mHoldingDisplaySuspendBlocker=true'){
+						if(this.sleep) {
+							this.emit("awake");
+							this.sleep = false;
+						}
+					} else {
+						if(!this.sleep) {
+							this.emit("sleep");
+							this.sleep = true;
+						}
+					}
+				}
+			});
+		}
+		run_command();
+		setInterval(run_command, interval);
 	});
 }
 
@@ -46,7 +69,7 @@ nvidiaShieldAdb.prototype.disconnect = function() {
 	});
 }
 
-// Emit event: 'awake'
+// Emit event: 'awake' and 'sleep'
 nvidiaShieldAdb.prototype.wake = function(callback) {
 	this.checkConnection();
 	exec('adb shell input keyevent KEYCODE_WAKEUP', (err, stdout, stderr) => {
@@ -56,28 +79,12 @@ nvidiaShieldAdb.prototype.wake = function(callback) {
 			this.emit("awake");
 
 			if(callback) callback();
-
-			clearInterval(this.are_you_awake_loop);
 		}
 	})
 }
 
 // Emit event: 'sleep' and 'awake'
 nvidiaShieldAdb.prototype.sleep = function(callback) {
-	var run_command = () => {
-		exec('adb shell dumpsys power | grep mHoldingDisplaySuspendBlocker', (err, stdout, stderr) => {
-			if (err) {
-				console.log("NS: Error while getting shield status", stderr);
-			} else {
-				if (stdout.trim() == 'mHoldingDisplaySuspendBlocker=true'){
-					clearInterval(this.are_you_awake_loop);
-
-					this.emit("awake");
-				}
-			}
-		});
-	}
-
 	this.checkConnection();
 	exec('adb shell input keyevent KEYCODE_SLEEP', (err, stdout, stderr) => {
 		if (err) {
@@ -85,12 +92,9 @@ nvidiaShieldAdb.prototype.sleep = function(callback) {
 		} else {
 			this.emit("sleep");
 
-			// so it will run first
-			this.are_you_awake_loop = setInterval(run_command, 5000);
-
 			if(callback) callback();
 		}
-	})
+	});
 }
 
 // Emit event: 'sentkey'
