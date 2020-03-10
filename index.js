@@ -69,6 +69,20 @@ nvidiaShieldAdb.prototype.disconnect = function() {
 	});
 }
 
+nvidiaShieldAdb.prototype.status = function() {
+	exec('adb shell dumpsys power | grep mHoldingDisplaySuspendBlocker', (err, stdout, stderr) => {
+		if (err) {
+			console.log("NS: Error while getting shield status", stderr);
+		} else {
+			if (stdout.trim() == 'mHoldingDisplaySuspendBlocker=true'){
+				return true;
+			} else {
+				return false;
+			}
+		}
+	});
+}
+
 // Emit event: 'awake' and 'sleep'
 nvidiaShieldAdb.prototype.wake = function(callback) {
 	this.checkConnection();
