@@ -54,9 +54,9 @@ nvidiaShieldAdb.prototype.wake = function(callback) {
 		} else {
 			console.log("NS: NVIDIA Shiled -> Awake");
 			this.emit("awake");
-		}
 
-		if(callback) callback();
+			if(callback) callback();
+		}
 	})
 }
 
@@ -69,9 +69,9 @@ nvidiaShieldAdb.prototype.sleep = function(callback) {
 		} else {
 			console.log("NS: NVIDIA Shiled -> Sleep");
 			this.emit("sleep");
-		}
 
-		if(callback) callback();
+			if(callback) callback();
+		}
 	})
 }
 
@@ -84,23 +84,31 @@ nvidiaShieldAdb.prototype.sendKey = function(key, callback) {
 		} else {
 			console.log("NS: " + key + " -> Sent");
 			this.emit("keysent");
-		}
 
-		if(callback) callback();
+			if(callback) callback();
+		}
 	})
 }
 
-// Emit event: 'gotcurrentapp'
+// Emit event: 'currentappchange'
 nvidiaShieldAdb.prototype.getCurrentApp = function(callback) {
 	this.checkConnection();
-	exec('adb shell dumpsys window windows | grep -E mFocusedApp | cut -d / -f 1 | cut -d " " -f 7', (err, stdout, stderr) => {
-		if (err) {
-			console.log("NS: Error while getting current app info", stderr);
-		} else {
-			console.log("NS: Current app is -> " + stdout);
-			this.emit("gotcurrentapp");
-		}
+	console.log("NS: Get current app -> START");
+	this.current_app_loop = setInterval(() => {
+		exec('adb shell dumpsys window windows | grep -E mFocusedApp | cut -d / -f 1 | cut -d " " -f 7', (err, stdout, stderr) => {
+			if (err) {
+				console.log("NS: Error while getting current app info", stderr);
+			} else if(this.prev_current_app == null || this.prev_current_app != stdout) {
+				console.log("NS: Current app is -> " + stdout);
+				this.emit("currentappchange", stdout);
+				this.prev_current_app = stdout;
 
-		if(callback) callback(stdout);
-	})
+				if(callback) callback(stdout);
+			}
+		});
+	}, 5000);
+}
+nvidiaShieldAdb.prototype.stopGetCurrentApp = function() {
+	clearInterval(this.current_app_loop);
+	console.log("NS: Get current app -> STOP");
 }
