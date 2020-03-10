@@ -106,6 +106,7 @@ nvidiaShieldAdb.prototype.getCurrentApp = function(callback) {
 	}, 5000);
 }
 nvidiaShieldAdb.prototype.stopGetCurrentApp = function() {
+	this.prev_current_app = null;
 	clearInterval(this.current_app_loop);
 	console.log("NS: Get current app -> STOP");
 }
