@@ -6,8 +6,10 @@ let
 	EventEmitter = require('events')
 ;
 
-var nvidiaShieldAdb = module.exports = function(ip) {
+var nvidiaShieldAdb = module.exports = function(ip, path = "/sdcard/Scripts/") {
 	EventEmitter.call(this);
+
+	this.path = path;
 
 	if (!ip) {
 		console.log("NS: Please provide NVIDIA Shield IP");
@@ -70,7 +72,7 @@ nvidiaShieldAdb.prototype.disconnect = function() {
 }
 
 nvidiaShieldAdb.prototype.status = function(callback = function() {}) {
-	exec('adb shell dumpsys power | grep mHoldingDisplaySuspendBlocker', (err, stdout, stderr) => {
+	exec('adb shell sh ' + this.path + 'getcurrentdisplaystatus.sh', (err, stdout, stderr) => {
 		if (err) {
 			console.log("NS: Error while getting shield status", stderr);
 		} else {
@@ -128,7 +130,7 @@ nvidiaShieldAdb.prototype.sendKey = function(key, callback) {
 // Emit event: 'currentappchange'
 nvidiaShieldAdb.prototype.getCurrentApp = function(callback) {
 	var run_command = () => {
-		exec('adb shell dumpsys window windows | grep -E mFocusedApp | cut -d / -f 1 | cut -d " " -f 7', (err, stdout, stderr) => {
+		exec('adb shell sh ' + this.path + 'getcurrentapp.sh', (err, stdout, stderr) => {
 			if (err) {
 				console.log("NS: Error while getting current app info", stderr);
 			} else if(this.prev_current_app == null || this.prev_current_app != stdout.trim()) {
