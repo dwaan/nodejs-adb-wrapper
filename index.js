@@ -6,10 +6,11 @@ let
 	EventEmitter = require('events')
 ;
 
-var nvidiaShieldAdb = module.exports = function(ip, path = "/sdcard/Scripts/") {
+var nvidiaShieldAdb = module.exports = function(ip, path = "/sdcard/Scripts/", interval = 1000) {
 	EventEmitter.call(this);
 
 	this.path = path;
+	this.interval = interval;
 
 	if (!ip) {
 		console.log("NS: Please provide NVIDIA Shield IP");
@@ -21,7 +22,7 @@ var nvidiaShieldAdb = module.exports = function(ip, path = "/sdcard/Scripts/") {
 util.inherits(nvidiaShieldAdb, EventEmitter);
 
 // Emit event: 'ready', "awake", "sleep"
-nvidiaShieldAdb.prototype.connect = function(interval = 5000) {
+nvidiaShieldAdb.prototype.connect = function() {
 	exec('adb connect ' + this.ip, (err, stdout, stderr) => {
 		if (err) {
 			console.log("NS: Error while connecting", stderr);
@@ -50,7 +51,7 @@ nvidiaShieldAdb.prototype.connect = function(interval = 5000) {
 			});
 		}
 		run_command();
-		setInterval(run_command, interval);
+		setInterval(run_command, this.interval);
 	});
 }
 
@@ -146,7 +147,7 @@ nvidiaShieldAdb.prototype.getCurrentApp = function(callback) {
 
 	// so it will run first
 	run_command();
-	this.current_app_loop = setInterval(run_command, 5000);
+	this.current_app_loop = setInterval(run_command, this.interval);
 }
 nvidiaShieldAdb.prototype.stopGetCurrentApp = function() {
 	this.prev_current_app = null;
