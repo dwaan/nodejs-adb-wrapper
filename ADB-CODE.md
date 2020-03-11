@@ -11,6 +11,11 @@
 `adb shell "dumpsys window windows | grep -E mFocusedApp | cut -d / -f 1 | cut -d  ' ' -f 7"`
 
 
+**Current App that Use Media Session, a.k.a Who is playing that sound app?**
+
+`adb shell "dumpsys media_session | grep packages | cut -d = -f 3 | head -n 1"`
+
+
 ## Key events list
 
 
