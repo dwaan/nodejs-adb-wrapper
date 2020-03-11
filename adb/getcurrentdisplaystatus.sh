@@ -1,1 +1,0 @@
-dumpsys power | grep mHoldingDisplaySuspendBlocker | cut -d / -f 1 | cut -d = -f 2

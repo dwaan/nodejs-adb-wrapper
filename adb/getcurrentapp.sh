@@ -1,1 +1,0 @@
-dumpsys window windows | grep -E mFocusedApp | cut -d / -f 1 | cut -d " " -f 7l

@@ -32,12 +32,12 @@ nvidiaShieldAdb.prototype.connect = function() {
 
 		// Main loop to check Shield status
 		var run_command = () => {
-			exec('adb shell dumpsys power | grep mHoldingDisplaySuspendBlocker', (err, stdout, stderr) => {
+			exec('adb shell "dumpsys power | grep mHoldingDisplaySuspendBlocker | cut -d / -f 1 | cut -d = -f 2"', (err, stdout, stderr) => {
 				if (err) {
 					console.log("NS: Reconnecting");
 					if (stderr.trim() == "error: no devices/emulators found") this.connect();
 				} else {
-					if (stdout.trim() == 'mHoldingDisplaySuspendBlocker=true'){
+					if (stdout.trim() == 'true'){
 						if(this.is_sleep) {
 							this.emit("awake");
 							this.is_sleep = false;
@@ -74,12 +74,12 @@ nvidiaShieldAdb.prototype.disconnect = function() {
 }
 
 nvidiaShieldAdb.prototype.status = function(callback = function() {}) {
-	exec('adb shell sh ' + this.path + 'getcurrentdisplaystatus.sh', (err, stdout, stderr) => {
+	exec('adb shell "dumpsys power | grep mHoldingDisplaySuspendBlocker | cut -d / -f 1 | cut -d = -f 2"', (err, stdout, stderr) => {
 		if (err) {
-			console.log("NS: Reconnecting");
+			console.log("NS: Reconnecting", stderr);
 			if (stderr.trim() == "error: no devices/emulators found") this.connect();
 		} else {
-			if (stdout.trim() == 'mHoldingDisplaySuspendBlocker=true'){
+			if (stdout.trim() == 'true'){
 				callback(true);
 			} else {
 				callback(false);
@@ -91,7 +91,7 @@ nvidiaShieldAdb.prototype.status = function(callback = function() {}) {
 // Emit event: 'awake' and 'sleep'
 nvidiaShieldAdb.prototype.wake = function(callback) {
 	this.checkConnection();
-	exec('adb shell input keyevent KEYCODE_WAKEUP', (err, stdout, stderr) => {
+	exec('adb shell "input keyevent KEYCODE_WAKEUP"', (err, stdout, stderr) => {
 		if (err) {
 			console.log("NS: Reconnecting");
 			if (stderr.trim() == "error: no devices/emulators found") this.connect();
@@ -106,7 +106,7 @@ nvidiaShieldAdb.prototype.wake = function(callback) {
 // Emit event: 'sleep' and 'awake'
 nvidiaShieldAdb.prototype.sleep = function(callback) {
 	this.checkConnection();
-	exec('adb shell input keyevent KEYCODE_SLEEP', (err, stdout, stderr) => {
+	exec('adb shell "input keyevent KEYCODE_SLEEP"', (err, stdout, stderr) => {
 		if (err) {
 			console.log("NS: Reconnecting");
 			if (stderr.trim() == "error: no devices/emulators found") this.connect();
@@ -121,7 +121,7 @@ nvidiaShieldAdb.prototype.sleep = function(callback) {
 // Emit event: 'sentkey'
 nvidiaShieldAdb.prototype.sendKey = function(key, callback) {
 	this.checkConnection();
-	exec('adb shell input keyevent ' + key, (err, stdout, stderr) => {
+	exec('adb shell "input keyevent ' + key + '"', (err, stdout, stderr) => {
 		if (err) {
 			console.log("NS: Reconnecting");
 			if (stderr.trim() == "error: no devices/emulators found") this.connect();
@@ -136,7 +136,7 @@ nvidiaShieldAdb.prototype.sendKey = function(key, callback) {
 // Emit event: 'currentappchange'
 nvidiaShieldAdb.prototype.getCurrentApp = function(callback) {
 	var run_command = () => {
-		exec('adb shell sh ' + this.path + 'getcurrentapp.sh', (err, stdout, stderr) => {
+		exec('adb shell "dumpsys window windows | grep -E mFocusedApp | cut -d / -f 1 | cut -d \' \' -f 7l"', (err, stdout, stderr) => {
 			if (err) {
 				console.log("NS: Reconnecting");
 				if (stderr.trim() == "error: no devices/emulators found") this.connect();

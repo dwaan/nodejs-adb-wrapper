@@ -3,12 +3,12 @@
 
 **Screen status**
 
-`adb shell dumpsys power | grep 'mHoldingDisplaySuspendBlocker'`
+`adb shell "dumpsys power | grep mHoldingDisplaySuspendBlocker"`
 
 
 **Current App**
 
-`adb shell dumpsys window windows | grep -E 'mFocusedApp' | cut -d / -f 1 | cut -d " " -f 7`
+`adb shell "dumpsys window windows | grep -E mFocusedApp | cut -d / -f 1 | cut -d  ' ' -f 7"`
 
 
 ## Key events list
