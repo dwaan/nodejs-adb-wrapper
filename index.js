@@ -30,64 +30,69 @@ var nvidiaShieldAdb = module.exports = function(ip, interval = 2500) {
 util.inherits(nvidiaShieldAdb, EventEmitter);
 nvidiaShieldAdb.debug = false;
 
-// Emit event: 'ready', 'awake', 'sleep', 'currentappchange', 'currentmediaappchange'
+// Emit event: 'ready'
 nvidiaShieldAdb.prototype.connect = function() {
 	exec('adb connect ' + this.ip, (err, stdout, stderr) => {
 		if (err && this.debug) {
 			console.log("NS: Error while connecting", stderr);
 		} else {
-			// Main loop to check Shield status
-			var run_command = () => {
-				// Send command in one batch to reduce execution
-				exec(`adb shell "${adb_commands}"`, (err, stdout, stderr) => {
-					if (err) {
-						if(this.debug) console.log("NS: Reconnecting", stderr);
-						if(stderr.trim() == "error: no devices/emulators found") this.connect();
-					} else {
-						// [0]: Screen status
-						// [1]: Current active app
-						// [2]: Current active media app
-						var output = stdout.trim().split("\n");
-
-						// Emit awake status
-						if (output[0] == 'true'){
-							if(this.is_sleep == undefined || this.is_sleep) {
-								if(this.debug) console.log("NS: Awake");
-								this.is_sleep = false;
-								this.emit("awake");
-							}
-						} else {
-							if(this.is_sleep == undefined || !this.is_sleep) {
-								if(this.debug) console.log("NS: Sleep");
-								this.is_sleep = true;
-								this.emit("sleep");
-							}
-						}
-
-						// Emit current app status
-						if(!this.prev_current_app || this.prev_current_app != output[1]) {
-							this.prev_current_app = output[1];
-							if(this.debug) console.log("NS: Current APP changed ->", this.prev_current_app);
-							this.emit("currentappchange", this.prev_current_app);
-						}
-
-						// Emit current media app status
-						if(!this.prev_media_current_app || this.prev_media_current_app != output[2]) {
-							this.prev_media_current_app = output[2];
-							if(this.debug) console.log("NS: Current Media APP changed ->", this.prev_media_current_app);
-							this.emit("currentmediaappchange", this.prev_media_current_app);
-						}
-					}
-				});
-			}
-			run_command();
-			clearInterval(this.main_loop);
-			this.main_loop = setInterval(run_command, this.interval);
+			this.subscribe();
 
 			if(this.debug) console.log("NS: Ready");
 			this.emit("ready");
 		}
 	});
+}
+
+// Emit event: 'awake', 'sleep', 'currentappchange', 'currentmediaappchange'
+nvidiaShieldAdb.prototype.subscribe = function() {
+	// Main loop to check Shield status
+	var run_command = () => {
+		// Send command in one batch to reduce execution
+		exec(`adb shell "${adb_commands}"`, (err, stdout, stderr) => {
+			if (err) {
+				if(this.debug) console.log("NS: Reconnecting", stderr);
+				if(stderr.trim() == "error: no devices/emulators found") this.connect();
+			} else {
+				// [0]: Screen status
+				// [1]: Current active app
+				// [2]: Current active media app
+				var output = stdout.trim().split("\n");
+
+				// Emit awake status
+				if (output[0] == 'true'){
+					if(this.is_sleep == undefined || this.is_sleep) {
+						if(this.debug) console.log("NS: Awake");
+						this.is_sleep = false;
+						this.emit("awake");
+					}
+				} else {
+					if(this.is_sleep == undefined || !this.is_sleep) {
+						if(this.debug) console.log("NS: Sleep");
+						this.is_sleep = true;
+						this.emit("sleep");
+					}
+				}
+
+				// Emit current app status
+				if(!this.prev_current_app || this.prev_current_app != output[1]) {
+					this.prev_current_app = output[1];
+					if(this.debug) console.log("NS: Current APP changed ->", this.prev_current_app);
+					this.emit("currentappchange", this.prev_current_app);
+				}
+
+				// Emit current media app status
+				if(!this.prev_media_current_app || this.prev_media_current_app != output[2]) {
+					this.prev_media_current_app = output[2];
+					if(this.debug) console.log("NS: Current Media APP changed ->", this.prev_media_current_app);
+					this.emit("currentmediaappchange", this.prev_media_current_app);
+				}
+			}
+		});
+	}
+	run_command();
+	clearInterval(this.main_loop);
+	this.main_loop = setInterval(run_command, this.interval);
 }
 
 nvidiaShieldAdb.prototype.checkConnection = function() {
