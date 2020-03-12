@@ -51,13 +51,13 @@ nvidiaShieldAdb.prototype.connect = function() {
 
 						// Emit awake status
 						if (output[0] == 'true'){
-							if(this.is_sleep) {
+							if(this.is_sleep == undefined || this.is_sleep) {
 								if(this.debug) console.log("NS: Awake");
 								this.is_sleep = false;
 								this.emit("awake");
 							}
 						} else {
-							if(!this.is_sleep) {
+							if(this.is_sleep == undefined || !this.is_sleep) {
 								if(this.debug) console.log("NS: Sleep");
 								this.is_sleep = true;
 								this.emit("sleep");
@@ -65,16 +65,16 @@ nvidiaShieldAdb.prototype.connect = function() {
 						}
 
 						// Emit current app status
-						if(this.prev_current_app == null || this.prev_current_app != output[1]) {
-							if(this.debug) console.log("NS: Current APP changed");
+						if(!this.prev_current_app || this.prev_current_app != output[1]) {
 							this.prev_current_app = output[1];
+							if(this.debug) console.log("NS: Current APP changed ->", this.prev_current_app);
 							this.emit("currentappchange", this.prev_current_app);
 						}
 
 						// Emit current media app status
-						if(this.prev_media_current_app == null || this.prev_media_current_app != output[2]) {
-							if(this.debug) console.log("NS: Current Media APP changed");
+						if(!this.prev_media_current_app || this.prev_media_current_app != output[2]) {
 							this.prev_media_current_app = output[2];
+							if(this.debug) console.log("NS: Current Media APP changed ->", this.prev_media_current_app);
 							this.emit("currentmediaappchange", this.prev_media_current_app);
 						}
 					}
@@ -110,7 +110,14 @@ nvidiaShieldAdb.prototype.disconnect = function() {
 }
 
 nvidiaShieldAdb.prototype.status = function(callback = function() {}) {
-	callback(!this.is_sleep);
+	exec(`adb shell "dumpsys power | grep mHoldingDisplaySuspendBlocker | cut -d / -f 1 | cut -d = -f 2"`, (err, stdout, stderr) => {
+		var output = stdout.trim();
+
+		if (output[0] == 'true') this.is_sleep = false;
+		else this.is_sleep = true;
+
+		callback(!this.is_sleep);
+	});
 }
 
 // Emit event: 'awake' and 'sleep'
