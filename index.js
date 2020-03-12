@@ -113,7 +113,8 @@ nvidiaShieldAdb.prototype.status = function(callback = function() {}) {
 	exec(`adb shell "dumpsys power | grep mHoldingDisplaySuspendBlocker | cut -d / -f 1 | cut -d = -f 2"`, (err, stdout, stderr) => {
 		var output = stdout.trim();
 
-		if (output[0] == 'true') this.is_sleep = false;
+		console.log(output);
+		if (output == 'true') this.is_sleep = false;
 		else this.is_sleep = true;
 
 		callback(!this.is_sleep);
