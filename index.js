@@ -31,12 +31,12 @@ util.inherits(nvidiaShieldAdb, EventEmitter);
 nvidiaShieldAdb.debug = false;
 
 // Emit event: 'ready'
-nvidiaShieldAdb.prototype.connect = function() {
+nvidiaShieldAdb.prototype.connect = function(nosubscribe = true) {
 	exec('adb connect ' + this.ip, (err, stdout, stderr) => {
 		if (err && this.debug) {
 			console.log("NS: Error while connecting", stderr);
 		} else {
-			this.subscribe();
+			if(nosubscribe) this.subscribe();
 
 			if(this.debug) console.log("NS: Ready");
 			this.emit("ready");
