@@ -31,7 +31,6 @@ var nvidiaShieldAdb = module.exports = function(ip, interval = 2500) {
 }
 util.inherits(nvidiaShieldAdb, EventEmitter);
 nvidiaShieldAdb.debug = false;
-nvidiaShieldAdb.dirty_is_sleep = false;
 
 // Emit event: 'ready'
 nvidiaShieldAdb.prototype.connect = function(nosubscribe = true) {
@@ -119,14 +118,14 @@ nvidiaShieldAdb.prototype.disconnect = function() {
 	});
 }
 
-nvidiaShieldAdb.prototype.status = function(callback = function() {}) {
+nvidiaShieldAdb.prototype.status = function(callback) {
 	exec(`adb shell "${sleep_command}"`, (err, stdout, stderr) => {
 		var output = stdout.trim();
 
 		if (output == 'true') this.is_sleep = false;
 		else this.is_sleep = true;
 
-		callback(!this.is_sleep);
+		if(callback) callback(!this.is_sleep);
 	});
 }
 
