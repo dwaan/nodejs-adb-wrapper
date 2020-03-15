@@ -149,9 +149,6 @@ nvidiaShieldAdb.prototype.wake = function(callback) {
 nvidiaShieldAdb.prototype.sleep = function(callback) {
 	this.checkConnection();
 
-	clearInterval(this.main_loop);
-	this.main_loop = setInterval(run_command, this.interval * 2);
-
 	exec('adb shell "input keyevent KEYCODE_SLEEP"', (err, stdout, stderr) => {
 		if (err) {
 			if(this.debug) console.log("NS: Reconnecting");
