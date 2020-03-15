@@ -6,13 +6,15 @@ let
 	EventEmitter = require('events')
 ;
 
-const adb_commands =
-	// Screen status, return true is screen is on (awake)
-	"dumpsys power | grep mHoldingDisplaySuspendBlocker | cut -d / -f 1 | cut -d = -f 2 && " +
-	// Current active app, return app name
-	"dumpsys window windows | grep -E mFocusedApp | cut -d / -f 1 | cut -d ' ' -f 7l && " +
-	// Current active media app, return app name
-	"dumpsys media_session | grep packages | cut -d = -f 3 | head -n 1"
+const
+	sleep_command = `dumpsys power | grep mHoldingDisplay | cut -d = -f 2`,
+	adb_commands =
+		// Screen status, return true is screen is on (awake)
+		`${sleep_command} && ` +
+		// Current active app, return app name
+		`dumpsys window windows | grep -E mFocusedApp | cut -d / -f 1 | cut -d ' ' -f 7l && ` +
+		// Current active media app, return app name
+		`dumpsys media_session | grep packages | cut -d = -f 3 | head -n 1`
 ;
 
 var nvidiaShieldAdb = module.exports = function(ip, interval = 2500) {
@@ -29,6 +31,7 @@ var nvidiaShieldAdb = module.exports = function(ip, interval = 2500) {
 }
 util.inherits(nvidiaShieldAdb, EventEmitter);
 nvidiaShieldAdb.debug = false;
+nvidiaShieldAdb.dirty_is_sleep = false;
 
 // Emit event: 'ready'
 nvidiaShieldAdb.prototype.connect = function(nosubscribe = true) {
@@ -47,9 +50,11 @@ nvidiaShieldAdb.prototype.connect = function(nosubscribe = true) {
 // Emit event: 'awake', 'sleep', 'currentappchange', 'currentmediaappchange'
 nvidiaShieldAdb.prototype.subscribe = function() {
 	// Main loop to check Shield status
-	var run_command = () => {
+	this.run_command = () => {
+		var command = (this.is_sleep == true)? sleep_command: adb_commands;
+
 		// Send command in one batch to reduce execution
-		exec(`adb shell "${adb_commands}"`, (err, stdout, stderr) => {
+		exec(`adb shell "${command}"`, (err, stdout, stderr) => {
 			if (err) {
 				if(this.debug) console.log("NS: Reconnecting", stderr);
 				if(stderr.trim() == "error: no devices/emulators found") this.connect();
@@ -75,14 +80,14 @@ nvidiaShieldAdb.prototype.subscribe = function() {
 				}
 
 				// Emit current app status
-				if(!this.prev_current_app || this.prev_current_app != output[1]) {
+				if(output[1] != undefined && (!this.prev_current_app || this.prev_current_app != output[1])) {
 					this.prev_current_app = output[1];
 					if(this.debug) console.log("NS: Current APP changed ->", this.prev_current_app);
 					this.emit("currentappchange", this.prev_current_app);
 				}
 
 				// Emit current media app status
-				if(!this.prev_media_current_app || this.prev_media_current_app != output[2]) {
+				if(output[2] != undefined && (!this.prev_media_current_app || this.prev_media_current_app != output[2])) {
 					this.prev_media_current_app = output[2];
 					if(this.debug) console.log("NS: Current Media APP changed ->", this.prev_media_current_app);
 					this.emit("currentmediaappchange", this.prev_media_current_app);
@@ -90,9 +95,9 @@ nvidiaShieldAdb.prototype.subscribe = function() {
 			}
 		});
 	}
-	run_command();
+	this.run_command();
 	clearInterval(this.main_loop);
-	this.main_loop = setInterval(run_command, this.interval);
+	this.main_loop = setInterval(this.run_command, this.interval);
 }
 
 nvidiaShieldAdb.prototype.checkConnection = function() {
@@ -115,7 +120,7 @@ nvidiaShieldAdb.prototype.disconnect = function() {
 }
 
 nvidiaShieldAdb.prototype.status = function(callback = function() {}) {
-	exec(`adb shell "dumpsys power | grep mHoldingDisplaySuspendBlocker | cut -d / -f 1 | cut -d = -f 2"`, (err, stdout, stderr) => {
+	exec(`adb shell "${sleep_command}"`, (err, stdout, stderr) => {
 		var output = stdout.trim();
 
 		if (output == 'true') this.is_sleep = false;
@@ -143,6 +148,10 @@ nvidiaShieldAdb.prototype.wake = function(callback) {
 // Emit event: 'sleep' and 'awake'
 nvidiaShieldAdb.prototype.sleep = function(callback) {
 	this.checkConnection();
+
+	clearInterval(this.main_loop);
+	this.main_loop = setInterval(run_command, this.interval * 2);
+
 	exec('adb shell "input keyevent KEYCODE_SLEEP"', (err, stdout, stderr) => {
 		if (err) {
 			if(this.debug) console.log("NS: Reconnecting");
