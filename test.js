@@ -3,7 +3,7 @@ var nvidiaShieldAdb = require('../nvidia-shield-adb');
 var shield = new nvidiaShieldAdb('192.168.1.106', 2500);
 
 shield.connect();
-shield.debug = true;
+shield.debug = false;
 
 shield.on('ready', function() {
 	console.log("TS: Shield ready");

@@ -72,9 +72,15 @@ nvidiaShieldAdb.prototype.subscribe = function() {
 					}
 				} else {
 					if(this.is_sleep == undefined || !this.is_sleep) {
-						if(this.debug) console.log("NS: Sleep");
+						clearTimeout(this.is_sleep_wait);
 						this.is_sleep = true;
-						this.emit("sleep");
+						// Sometimes when Shield is connecting to a VPN
+						// the connection is disconnected, so it appear that
+						// the shiled is sleep, wait 3 seconds should solve the problem
+						this.is_sleep_wait = setTimeout(()=> {
+							if(this.debug) console.log("NS: Sleep");
+							this.emit("sleep");
+						}, 3000);
 					}
 				}
 
