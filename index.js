@@ -34,7 +34,7 @@ nvidiaShieldAdb.debug = false;
 
 // Emit event: 'ready'
 nvidiaShieldAdb.prototype.connect = function(nosubscribe = true) {
-	exec('adbl connect ' + this.ip, (err, stdout, stderr) => {
+	exec('adb connect ' + this.ip, (err, stdout, stderr) => {
 		if (err) {
 			console.log("NS: Error while connecting\n", stderr);
 		} else {
