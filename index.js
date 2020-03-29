@@ -66,6 +66,7 @@ nvidiaShieldAdb.prototype.subscribe = function() {
 				// Emit awake status
 				if (output[0] == 'true'){
 					if(this.is_sleep == undefined || this.is_sleep) {
+						clearTimeout(this.is_sleep_wait);
 						if(this.debug) console.log("NS: Awake");
 						this.is_sleep = false;
 						this.emit("awake");
