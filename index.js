@@ -53,7 +53,7 @@ nvidiaShieldAdb.prototype.subscribe = function() {
 		var command = (this.is_sleep == true)? sleep_command: adb_commands;
 
 		// Send command in one batch to reduce execution
-		exec(`adb shell "${command}"`, (err, stdout, stderr) => {
+		exec(`adb -s ${this.ip} shell "${command}"`, (err, stdout, stderr) => {
 			if (err) {
 				if(this.debug) console.log("NS: Reconnecting", stderr);
 				if(stderr.trim() == "error: no devices/emulators found") this.connect();
@@ -126,7 +126,7 @@ nvidiaShieldAdb.prototype.disconnect = function() {
 }
 
 nvidiaShieldAdb.prototype.status = function(callback) {
-	exec(`adb shell "${sleep_command}"`, (err, stdout, stderr) => {
+	exec(`adb -s ${this.ip} shell "${sleep_command}"`, (err, stdout, stderr) => {
 		var output = stdout.trim();
 
 		if (output == 'true') this.is_sleep = false;
@@ -139,7 +139,7 @@ nvidiaShieldAdb.prototype.status = function(callback) {
 // Emit event: 'awake' and 'sleep'
 nvidiaShieldAdb.prototype.wake = function(callback) {
 	this.checkConnection();
-	exec('adb shell "input keyevent KEYCODE_WAKEUP"', (err, stdout, stderr) => {
+	exec('adb -s ${this.ip} shell "input keyevent KEYCODE_WAKEUP"', (err, stdout, stderr) => {
 		if (err) {
 			if(this.debug) console.log("NS: Reconnecting");
 			if (stderr.trim() == "error: no devices/emulators found") this.connect();
@@ -155,7 +155,7 @@ nvidiaShieldAdb.prototype.wake = function(callback) {
 nvidiaShieldAdb.prototype.sleep = function(callback) {
 	this.checkConnection();
 
-	exec('adb shell "input keyevent KEYCODE_SLEEP"', (err, stdout, stderr) => {
+	exec('adb -s ${this.ip} shell "input keyevent KEYCODE_SLEEP"', (err, stdout, stderr) => {
 		if (err) {
 			if(this.debug) console.log("NS: Reconnecting");
 			if (stderr.trim() == "error: no devices/emulators found") this.connect();
@@ -170,7 +170,7 @@ nvidiaShieldAdb.prototype.sleep = function(callback) {
 // Emit event: 'sentkey'
 nvidiaShieldAdb.prototype.sendKey = function(key, callback) {
 	this.checkConnection();
-	exec('adb shell "input keyevent ' + key + '"', (err, stdout, stderr) => {
+	exec('adb -s ${this.ip} shell "input keyevent ' + key + '"', (err, stdout, stderr) => {
 		if (err) {
 			if(this.debug) console.log("NS: Reconnecting");
 			if (stderr.trim() == "error: no devices/emulators found") this.connect();
