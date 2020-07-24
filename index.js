@@ -12,9 +12,11 @@ const
 		// Screen status, return true is screen is on (awake)
 		`${sleep_command} && ` +
 		// Current active app, return app name
-		`dumpsys window windows | grep -E mFocusedApp | cut -d / -f 1 | cut -d ' ' -f 7l && ` +
+		`dumpsys window windows | grep -E mFocusedApp | cut -d '/' -f 1 | cut -d ' ' -f 7 && ` +
 		// Current active media app, return app name
-		`dumpsys media_session | grep packages | cut -d = -f 3 | head -n 1`
+		`dumpsys media_session | grep ' package=' | head -n 1 | cut -d '=' -f 2`
+		// Current media description
+		// "dumpsys media_session | grep metadata:size= | head -n 1 | cut -d '=' -f 3"
 ;
 
 var nvidiaShieldAdb = module.exports = function(ip, interval = 2500) {
