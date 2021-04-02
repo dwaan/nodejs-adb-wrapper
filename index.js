@@ -14,7 +14,7 @@ const
 		// Current active app, return app name
 		`dumpsys window windows | grep -E mFocusedApp | cut -d '/' -f 1 | cut -d ' ' -f 7 && ` +
 		// Current active media app, return app name
-		`dumpsys media_session | grep ' package=' | head -n 1 | cut -d '=' -f 2`
+		`dumpsys media_session | grep ' packages=' | head -n 1 | cut -d '=' -f 3`
 		// Current media description
 		// "dumpsys media_session | grep metadata:size= | head -n 1 | cut -d '=' -f 3"
 ;
