@@ -1,2 +1,3 @@
-# nvidia-shield-adb
-Helper to connect NVIDIA Shield using Node.js exec and ADB command
+# Node.JS Android Bridge wrapper
+
+A Node.JS module to connect Android devices using ADB.
