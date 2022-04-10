@@ -1,40 +1,42 @@
-var nvidiaShieldAdb = require('../nvidia-shield-adb');
+var adb = require('../nodejs-adb-wrapper');
 
-var shield = new nvidiaShieldAdb('192.168.1.106', 2500);
-
-shield.connect();
-shield.debug = true;
-
-shield.on('ready', function() {
-	console.log("TS: Shield ready");
-	this.status((status) => {
-		console.log("TS: Shield status -> " + status);
-	})
-
-	setTimeout(() => {
-		console.log("Put to sleep");
-		this.sleep();
-
-		setTimeout(() => {
-			console.log("Put to wake up");
-			this.wake();
-		}, 5000);
-	}, 5000);
+let shield = new adb(`192.168.1.108`);
+shield.update().then(() => {
+    shield.powerOn();
+    shield.launchApp(`shell adb version`).then(({ result, message }) => {
+        console.log(result, message);
+    });
+}).catch(message => {
+    console.log(message);
 });
 
-shield.on('awake', function(current_app) {
-	console.log("TS: Shield awake");
+shield.on("powerOn", function () {
+    console.log("Starting Power On");
+});
+shield.on("powerOnSuccess", function () {
+    console.log("Power On Success");
+});
+shield.on("powerOnFailed", function () {
+    console.log("Power On Failed");
 });
 
-shield.on('sleep', function(current_app) {
-	console.log("TS: Shield sleep");
+shield.on("connected", function () {
+    console.log("Connected");
+});
+shield.on("disconnected", function () {
+    console.log("Disconnected");
 });
 
-shield.on('currentappchange', function(current_app) {
-	console.log("TS: Current app -> " + current_app);
+shield.on("awake", function () {
+    console.log("Awake");
+});
+shield.on("sleep", function () {
+    console.log("Sleep");
 });
 
-shield.on('currentmediaappchange', function(current_app) {
-	console.log("TS: Current media app -> " + current_app);
+shield.on("appChange", function () {
+    console.log("App change to:", this.currentAppID);
 });
-
+shield.on("playback", function () {
+    console.log("Playback:", this.isPlayback);
+});

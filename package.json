@@ -1,10 +1,10 @@
 {
-  "name": "nvidia-shield-adb",
+  "name": "nodejs-adb-wrapper",
   "version": "1.0.0",
-  "description": "Node.js helper to connect to NVIDIA Shield (and possibly other android device) using adb",
+  "description": "Node.js module to connect to Android device using ADB",
   "main": "index.js",
   "scripts": {
-    "test": "node test.js"
+    "test": "nodemon test.js"
   },
   "keywords": [
     "node.js",
@@ -12,5 +12,8 @@
     "helper"
   ],
   "author": "Dwan",
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "nodemon": "^2.0.15"
+  }
 }
