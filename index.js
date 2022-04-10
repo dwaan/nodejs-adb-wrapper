@@ -231,7 +231,7 @@ class adb extends EventEmitter {
         if (result || !this.isInitilized) {
             if (this.currentAppID != message) {
                 this.currentAppID = message;
-                this.emit('appChange');
+                this.emit('appChange', this.currentAppID);
             }
         }
 
@@ -294,7 +294,7 @@ class adb extends EventEmitter {
             if (Date.now() - this.playbackTimestamp >= this.playbackDelayOff || !this.isPlayback) {
                 this.playbackTimestamp = Date.now();
                 this.isPlayback = result;
-                this.emit("playback");
+                this.emit("playback", this.currentAppID);
             }
         }
 
