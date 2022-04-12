@@ -37,6 +37,6 @@ shield.on("sleep", function () {
 shield.on("appChange", function () {
     console.log("App change to:", this.currentAppID);
 });
-shield.on("playback", function () {
-    console.log("Playback:", this.isPlayback);
+shield.on("playback", function (app, status) {
+    console.log("Playback:", app, status);
 });
