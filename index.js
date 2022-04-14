@@ -47,6 +47,7 @@ class adb extends EventEmitter {
         this.isPlayback = false;
         this.currentAppID = false;
         this.canUseTail = false;
+        this.isOnPowerCycle = false;
 
         // Timestamp
         this.playbackTimestamp = Date.now();
@@ -68,7 +69,7 @@ class adb extends EventEmitter {
     }
 
     // Adb exec helper
-    adb = async function (params, id) {
+    adb = function (params, id) {
         return new Promise(async (resolve) => {
             this.child[id] = execFile(`${this.path}adb`, params, (error, stdout, stderr) => {
                 let message = error ? stderr.trim() : stdout.trim();
@@ -88,7 +89,7 @@ class adb extends EventEmitter {
                 let message = stdout.trim() || stderr.trim();
                 let result = error ? false : true;
 
-                resolve({result, message});
+                resolve({ result, message });
             });
 
             await this.autoKill(id);
@@ -152,26 +153,25 @@ class adb extends EventEmitter {
                         if (callback) callback(output);
                     });
             }, this.interval);
-        } else throw(`Can't find ADB executable file`);
+        } else throw `Can't find ADB executable file`;
     }
 
     // Statuses helper
     state = async function () {
         if (!this.connected) {
             this.isAwake = false;
-            return false;
+            throw `Not connected`;
         }
 
         let { result, message } = await this.adbShell(`dumpsys power | grep mHoldingDisplay`);
 
         message = result ? message.split("=") : [];
-        result = message.length < 1 ? false : message[1] === `true` ? true : false;
+        result = message.length <= 0 ? false : message[1] === `true` ? true : false;
 
         if (result != this.isAwake || !this.isInitilized) {
             this.isAwake = result;
 
-            if (this.isAwake) this.emit('awake');
-            else this.emit('sleep');
+            if (!this.isOnPowerCycle) this.emit(this.isAwake ? 'awake' : 'sleep');
         }
 
         return { result, message: message.join("=") };
@@ -294,7 +294,7 @@ class adb extends EventEmitter {
             if (Date.now() - this.playbackTimestamp >= this.playbackDelayOff || !this.isPlayback) {
                 this.playbackTimestamp = Date.now();
                 this.isPlayback = result;
-                this.emit("playback", this.currentAppID, this.isPlayback);
+                this.emit("playback", this.currentAppID);
             }
         }
 
@@ -302,32 +302,41 @@ class adb extends EventEmitter {
     }
 
     // Power helper
-    power = async function (keycode = `KEYCODE_POWER`, isPowerOn = true) {
-        let retry = this.retryPowerOn;
+    power = function (keycode = `KEYCODE_POWER`, isPowerOn = true) {
+        return new Promise(async (resolve, reject) => {
+            let retry = this.retryPowerOn;
 
-        this.emit(`power${isPowerOn ? "On" : "Off"}`);
-        if ((isPowerOn && !this.isAwake) || (!isPowerOn && this.isAwake)) {
-            do {
-                await this.sendKeycode(keycode);
-                await this.sleep(500);
-                await this.state();
+            this.isOnPowerCycle = true;
 
-                if (isPowerOn) {
-                    if (this.isAwake) break;
-                    else retry--;
-                } else {
-                    if (this.isAwake) retry--;
-                    else break;
-                }
-            } while (retry > 0);
-        } else {
-            retry = 10;
-        }
+            this.emit(`power${isPowerOn ? "On" : "Off"}`);
+            if ((isPowerOn && !this.isAwake) || (!isPowerOn && this.isAwake)) {
+                do {
+                    await this.sendKeycode(keycode);
+                    await this.sleep(500);
+                    await this.state();
 
-        retry = retry > 0 ? false : true;
-        this.emit(`power${isPowerOn ? "On" : "Off"}${retry ? "Failed" : "Success"}`);
+                    if (isPowerOn) {
+                        if (this.isAwake) break;
+                        else retry--;
+                    } else {
+                        if (this.isAwake) retry--;
+                        else break;
+                    }
+                } while (retry > 0);
+            } else {
+                retry = 10;
+            }
 
-        return retry;
+            let result = retry > 0 ? true : false;
+            let message = result ? "Success" : "Failed";
+            this.emit(`power${isPowerOn ? "On" : "Off"}${message}`);
+            this.emit(`${isPowerOn ? "awake" : "sleep"}`);
+
+            // Emit events
+            await this.state();
+
+            result ? resolve({ result, message }) : reject(message);
+        });
     }
     powerOn = async function (keycode = `KEYCODE_POWER`) {
         return await this.power(keycode);
