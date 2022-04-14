@@ -1,12 +1,12 @@
-'use strict';
+`use strict`;
 
-const { exec, execFile } = require('child_process');
-const EventEmitter = require('events');
+const { exec, execFile } = require(`child_process`);
+const EventEmitter = require(`events`);
 
 class adb extends EventEmitter {
     // App ids
-    OTHER_APP_ID = "other";
-    HOME_APP_ID = "home";
+    OTHER_APP_ID = `other`;
+    HOME_APP_ID = `home`;
 
     // Connection values
     DISCONNECTED = 0;
@@ -28,7 +28,7 @@ class adb extends EventEmitter {
         this.interval = config.interval || 1000;
         if (this.interval < 1000) this.interval = 1000;
         this.timeout = config.timeout || 1000;
-        if (this.timeout < 1000) this.timeout = 1000;
+        if (this.timeout < 500) this.timeout = 500;
         this.playbackDelayOff = config.playbackDelayOff || 10000;
         this.retryPowerOn = config.retryPowerOn || 10;
 
@@ -104,7 +104,7 @@ class adb extends EventEmitter {
         return await this.adb([`start-server`]);
     }
     connect = async function () {
-        if (this.isAwake) return { result: true, message: "" };
+        if (this.isAwake) return { result: true, message: `` };
 
         let { result, message } = await this.adb([`connect`, `${this.ip}`]);
 
@@ -122,8 +122,7 @@ class adb extends EventEmitter {
 
         if (this.connected != result || !this.isInitilized) {
             this.connected = result;
-            if (this.connected == this.CONNECTED) this.emit('connected');
-            else this.emit('disconnected');
+            this.emit(this.connected == this.CONNECTED ? `connected` : `disconnected`);
         }
 
         return { result, message };
@@ -150,10 +149,9 @@ class adb extends EventEmitter {
                 this.state(),
                 this.currentApp(),
                 this.currentPlayback()
-            ])
-                .then(output => {
-                    if (callback) callback(output);
-                });
+            ]).then(output => {
+                if (callback) callback(output);
+            });
         }, this.interval);
 
         return { result, message };
@@ -161,20 +159,20 @@ class adb extends EventEmitter {
 
     // Statuses helper
     state = async function () {
-        if (!this.connected) throw `Device is not connected`;
+        if (!this.connected) return { result: false, message: `Device is not connected` };
 
         let { result, message } = await this.adbShell(`dumpsys power | grep mHoldingDisplay`);
 
-        message = result ? message.split("=") : [];
+        message = result ? message.split(`=`) : [];
         result = message.length <= 0 ? false : message[1] === `true` ? true : false;
 
         if (result != this.isAwake || !this.isInitilized) {
             this.isAwake = result;
 
-            if (!this.isOnPowerCycle) this.emit(this.isAwake ? 'awake' : 'sleep');
+            if (!this.isOnPowerCycle) this.emit(this.isAwake ? `awake` : `sleep`);
         }
 
-        return { result, message: message.join("=") };
+        return { result, message: message.join(`=`) };
     }
     model = async function () {
         return await this.adbShell(`getprop ro.product.model && getprop ro.product.manufacturer && getprop ro.serialno`);
@@ -231,30 +229,30 @@ class adb extends EventEmitter {
         if (result || !this.isInitilized) {
             if (this.currentAppID != message) {
                 this.currentAppID = message;
-                this.emit('appChange', this.currentAppID);
+                this.emit(`appChange`, this.currentAppID);
             }
         }
 
         return { result, message: this.currentAppID };
     }
-    launchApp = async function (param = "") {
-        let params = param.split(" ");
+    launchApp = async function (param = ``) {
+        let params = param.split(` `);
 
-        if (params[0].toLowerCase() == "shell") {
+        if (params[0].toLowerCase() == `shell`) {
             params.splice(0, 1);
             return await this.osShell(params.join(` `), params.join(` `));
-        } else if (params.length == 1 && param.includes(".")) {
+        } else if (params.length == 1 && param.includes(`.`)) {
             return await this.adbShell(`monkey -p ${param} 1`)
         } else {
             return await this.adbShell(param);
         }
     }
-    sendKeycode = async function (keycode = "") {
-        let finalKeycods = "";
-        let keycodes = keycode.split(" ");
+    sendKeycode = async function (keycode = ``) {
+        let finalKeycods = ``;
+        let keycodes = keycode.split(` `);
         let isShell = false;
 
-        if (keycodes[0].toLowerCase() == "shell") {
+        if (keycodes[0].toLowerCase() == `shell`) {
             isShell = true;
             for (let i = 1; i < keycodes.length; i++) finalKeycods += `${keycodes[i]} `;
         } else {
@@ -276,19 +274,19 @@ class adb extends EventEmitter {
         }
 
         let { result, message } = await this.adbShell(`dumpsys media_session | grep -e 'Media button session is' -e 'AlexaMediaPlayerRuntime'`);
-        if (this.currentAppID == this.HOME_APP_ID || message.includes(this.currentAppID) || message.includes('AlexaMediaPlayerRuntime')) {
+        if (this.currentAppID == this.HOME_APP_ID || message.includes(this.currentAppID) || message.includes(`AlexaMediaPlayerRuntime`)) {
             let output = await this.adbShell(`dumpsys media_session | grep 'state=resultState'`);
             if (output.message == ``) output = await this.adbShell(`dumpsys media_session | grep 'state=PlaybackState'`);
 
-            result = output.message == `` ? false : (output.message.includes("state=3") ? true : false);
+            result = output.message == `` ? false : (output.message.includes(`state=3`) ? true : false);
         } else {
-            let { message } = await this.adbShell(`dumpsys audio | grep 'player piid:' | grep ' state:'${this.canUseTail ? ' | tail -1' : ''}`);
+            let { message } = await this.adbShell(`dumpsys audio | grep 'player piid:' | grep ' state:'${this.canUseTail ? ` | tail -1` : ``}`);
 
             if (message === true) result = false;
             else {
-                message = message.split("\n");
+                message = message.split(`\n`);
                 message = message[message.length - 1].trim();
-                result = message.includes("state:started") ? true : false;
+                result = message.includes(`state:started`) ? true : false;
             }
         }
 
@@ -297,7 +295,7 @@ class adb extends EventEmitter {
             if (Date.now() - this.playbackTimestamp >= this.playbackDelayOff || !this.isPlayback) {
                 this.playbackTimestamp = Date.now();
                 this.isPlayback = result;
-                this.emit("playback", this.currentAppID, this.isPlayback);
+                this.emit(`playback`, this.currentAppID, this.isPlayback);
             }
         }
 
@@ -305,15 +303,15 @@ class adb extends EventEmitter {
     }
 
     // Power helper
-    power = async function (keycode = `KEYCODE_POWER`, isPowerOn = true) {
+    power = async function (keycode, isPowerOn = true) {
         let retry = this.retryPowerOn;
 
         this.isOnPowerCycle = true;
 
-        this.emit(`power${isPowerOn ? "On" : "Off"}`);
+        this.emit(`power${isPowerOn ? `On` : `Off`}`);
         if ((isPowerOn && !this.isAwake) || (!isPowerOn && this.isAwake)) {
             do {
-                await this.sendKeycode(keycode);
+                await this.sendKeycode(keycode || `KEYCODE_POWER`);
                 await this.sleep(500);
                 await this.state();
 
@@ -330,9 +328,9 @@ class adb extends EventEmitter {
         }
 
         let result = retry > 0 ? true : false;
-        let message = result ? "Success" : "Failed";
-        this.emit(`power${isPowerOn ? "On" : "Off"}${message}`);
-        this.emit(`${isPowerOn ? "awake" : "sleep"}`);
+        let message = result ? `Success` : `Failed`;
+        this.emit(`power${isPowerOn ? `On` : `Off`}${message}`);
+        this.emit(`${isPowerOn ? `awake` : `sleep`}`);
 
         // Emit events
         await this.state();
@@ -340,11 +338,11 @@ class adb extends EventEmitter {
         if (result) return { result, message };
         else throw message;
     }
-    powerOn = async function (keycode = `KEYCODE_POWER`) {
-        return await this.power(keycode);
+    powerOn = async function (keycode) {
+        return await this.power(keycode || `KEYCODE_POWER`);
     }
-    powerOff = async function (keycode = `KEYCODE_POWER`) {
-        return await this.power(keycode, false);
+    powerOff = async function (keycode) {
+        return await this.power(keycode || `KEYCODE_POWER`, false);
     }
 
     // Clean up
