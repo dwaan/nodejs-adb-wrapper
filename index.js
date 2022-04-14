@@ -75,12 +75,12 @@ class adb extends EventEmitter {
                 let message = error ? stderr.trim() : stdout.trim();
                 let result = error ? false : true;
 
-                resolve({ result, message });
+                resolve({ result, message: message == `` ? `Timeout` : message});
             }, {
                 windowsHide: true
             });
 
-            await this.autoKill(id);
+            this.autoKill(id);
         });
     }
     osShell = async function (params, id) {
@@ -89,10 +89,10 @@ class adb extends EventEmitter {
                 let message = stdout.trim() || stderr.trim();
                 let result = error ? false : true;
 
-                resolve({ result, message });
+                resolve({ result, message: message == `` ? `Timeout` : message});
             });
 
-            await this.autoKill(id);
+            this.autoKill(id);
         });
     }
     adbShell = async function (params) {
@@ -240,7 +240,7 @@ class adb extends EventEmitter {
 
         if (params[0].toLowerCase() == `shell`) {
             params.splice(0, 1);
-            return await this.osShell(params.join(` `), params.join(` `));
+            return await this.osShell(params.join(` `), params.join(``));
         } else if (params.length == 1 && param.includes(`.`)) {
             return await this.adbShell(`monkey -p ${param} 1`)
         } else {
@@ -347,13 +347,10 @@ class adb extends EventEmitter {
 
     // Clean up
     autoKill = function (id) {
-        return new Promise((resolve) => {
-            if (this.child[id].loop) clearTimeout(this.child[id].loop);
-            this.child[id].loop = setTimeout(() => {
-                this.child[id].kill();
-                resolve();
-            }, this.timeout);
-        });
+        if (this.child[id].loop) clearTimeout(this.child[id].loop);
+        this.child[id].loop = setTimeout(() => {
+            this.child[id].kill();
+        }, this.timeout);
     }
     kill = function () {
         this.child.forEach(child => {
