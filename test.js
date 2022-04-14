@@ -1,10 +1,24 @@
 var adb = require('../nodejs-adb-wrapper');
 
-let shield = new adb(`192.168.1.108`);
+let shield = new adb(`192.168.1.108`, {
+    path: "/usr/local/bin/"
+});
+
+// Not connected yet will throw error
+shield.state().then(({ result, message }) => {
+    console.log(result, message);
+}).catch(message => {
+    console.log(message);
+});
+
+// Connected and looped
 shield.update().then(() => {
-    shield.powerOn();
+    shield.powerOn().catch(message => {
+        console.log(message);
+    });
+
     shield.launchApp(`shell adb version`).then(({ result, message }) => {
-        console.log(result, message);
+        console.log(result, message)
     });
 }).catch(message => {
     console.log(message);
