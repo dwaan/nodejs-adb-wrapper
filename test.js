@@ -17,9 +17,9 @@ shield.update().then(() => {
         console.log(message);
     });
 
-    shield.launchApp(`shell adb version`).then(({ result, message }) => {
-        console.log(result, message)
-    });
+    // shield.launchApp(`shell adb version`).then(({ result, message }) => {
+    //     console.log(result, message)
+    // });
 }).catch(message => {
     console.log(message);
 });

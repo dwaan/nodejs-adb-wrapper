@@ -75,7 +75,7 @@ class adb extends EventEmitter {
                 let message = error ? stderr.trim() : stdout.trim();
                 let result = error ? false : true;
 
-                resolve({ result, message: message == `` ? `Timeout` : message});
+                resolve({ result, message: message == `` ? `Timeout` : message });
             }, {
                 windowsHide: true
             });
@@ -89,7 +89,7 @@ class adb extends EventEmitter {
                 let message = stdout.trim() || stderr.trim();
                 let result = error ? false : true;
 
-                resolve({ result, message: message == `` ? `Timeout` : message});
+                resolve({ result, message: message == `` ? `Timeout` : message });
             });
 
             this.autoKill(id);
@@ -330,9 +330,9 @@ class adb extends EventEmitter {
         let result = retry > 0 ? true : false;
         let message = result ? `Success` : `Failed`;
         this.emit(`power${isPowerOn ? `On` : `Off`}${message}`);
-        this.emit(`${isPowerOn ? `awake` : `sleep`}`);
 
         // Emit events
+        this.isOnPowerCycle = false;
         await this.state();
 
         if (result) return { result, message };
