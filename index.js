@@ -276,7 +276,7 @@ class adb extends EventEmitter {
         let { result, message } = await this.adbShell(`dumpsys media_session | grep -e 'Media button session is' -e 'AlexaMediaPlayerRuntime'`);
         if (this.currentAppID == this.HOME_APP_ID || message.includes(this.currentAppID) || message.includes(`AlexaMediaPlayerRuntime`)) {
             let output = await this.adbShell(`dumpsys media_session | grep 'state=resultState'`);
-            if (output.message == ``) output = await this.adbShell(`dumpsys media_session | grep 'state=PlaybackState'`);
+            if (!output.result) output = await this.adbShell(`dumpsys media_session | grep 'state=PlaybackState'`);
 
             result = output.message == `` ? false : (output.message.includes(`state=3`) ? true : false);
         } else {
