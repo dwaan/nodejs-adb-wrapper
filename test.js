@@ -1,7 +1,9 @@
 var adb = require('../nodejs-adb-wrapper');
 
-let shield = new adb(`192.168.1.108`, {
-    path: "/usr/local/bin/"
+let ip = `192.168.1.108`;
+let shield = new adb(ip, {
+    path: "/usr/local/bin/",
+    interval: 2000
 });
 
 // Not connected yet will throw error
@@ -13,12 +15,12 @@ shield.state().then(({ result, message }) => {
 
 // Connected and looped
 shield.update().then(() => {
-    shield.powerOn().catch(message => {
-        console.log(message);
+    shield.launchApp(`shell adb devices`).then(({ result, message }) => {
+        console.log(result, message.includes(ip));
     });
 
-    // shield.launchApp(`shell adb version`).then(({ result, message }) => {
-    //     console.log(result, message)
+    // shield.powerOn().catch(message => {
+    //     console.log(message);
     // });
 }).catch(message => {
     console.log(message);
@@ -53,4 +55,7 @@ shield.on("appChange", function () {
 });
 shield.on("playback", function (app, status) {
     console.log("Playback:", app, status);
+});
+shield.on("update", function () {
+    // console.log("Update");
 });

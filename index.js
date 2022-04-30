@@ -25,9 +25,9 @@ class adb extends EventEmitter {
 
         this.ip = ip;
         this.path = config.path || ``;
-        this.interval = config.interval || 1000;
+        this.interval = config.interval || 1500;
         if (this.interval < 1000) this.interval = 1000;
-        this.timeout = config.timeout || 1000;
+        this.timeout = config.timeout || 1500;
         if (this.timeout < 500) this.timeout = 500;
         this.playbackDelayOff = config.playbackDelayOff || 10000;
         this.retryPowerOn = config.retryPowerOn || 10;
@@ -152,6 +152,7 @@ class adb extends EventEmitter {
             ]).then(output => {
                 if (callback) callback(output);
             });
+            this.emit(`update`);
         }, this.interval);
 
         return { result, message };
