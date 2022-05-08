@@ -1,8 +1,8 @@
 var adb = require('../nodejs-adb-wrapper');
 
-let ip = `192.168.1.108`;
+let ip = `192.168.1.115`;
 let shield = new adb(ip, {
-    path: "/usr/local/bin/",
+    path: "/usr/local/bin/adb",
     interval: 2000
 });
 
@@ -19,9 +19,9 @@ shield.update().then(() => {
         console.log(result, message.includes(ip));
     });
 
-    // shield.powerOn().catch(message => {
-    //     console.log(message);
-    // });
+    shield.powerOn().catch(message => {
+        console.log(message);
+    });
 }).catch(message => {
     console.log(message);
 });
@@ -56,6 +56,6 @@ shield.on("appChange", function () {
 shield.on("playback", function (app, status) {
     console.log("Playback:", app, status);
 });
-shield.on("update", function () {
-    // console.log("Update");
-});
+// shield.on("update", function () {
+//     console.log(Date());
+// });
