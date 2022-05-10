@@ -283,7 +283,7 @@ class adb extends EventEmitter {
             if (Date.now() - this.playbackTimestamp >= this.playbackDelayOff || !this.isPlayback) {
                 this.playbackTimestamp = Date.now();
                 this.isPlayback = result;
-                this.emit(`playback`, this.currentAppID, this.isPlayback);
+                this.emit(`playback`, this.currentAppID, this.isPlayback, message);
             }
         }
 
