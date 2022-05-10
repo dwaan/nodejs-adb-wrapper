@@ -275,7 +275,7 @@ class adb extends EventEmitter {
             return { result: this.isPlayback, message: `Playback is always off when device is sleeping` };
         }
 
-        let { result, message } = await this.adbShell(`dumpsys media_session | grep -e 'Media button session is' -e 'AlexaMediaPlayerRuntime' -e 'state=PlaybackState {state=3' -e 'state=resultState'`);
+        let { result, message } = await this.adbShell(`dumpsys media_session | grep -e 'Media button session is' -e 'AlexaMediaPlayerRuntime' -e 'state=PlaybackState' -e 'state=resultState'`);
         result = ((this.currentAppID == this.HOME_APP_ID || message.includes(this.currentAppID) || message.includes(`AlexaMediaPlayerRuntime`)) && message.includes(`state=3`)) ? true : false;
 
         if (result) this.playbackTimestamp = Date.now();
