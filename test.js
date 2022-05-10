@@ -1,6 +1,6 @@
 var adb = require('../nodejs-adb-wrapper');
 
-let ip = `192.168.1.115`;
+let ip = `192.168.1.108`;
 let shield = new adb(ip, {
     path: "/usr/local/bin/adb",
     interval: 2000

@@ -97,7 +97,7 @@ class adb extends EventEmitter {
     }
     adbShell = async function () {
         let params = "";
-        for(let i = 0; i < arguments.length; i++) params += (arguments[i] + (i == arguments.length - 1 ? `` : ` && `));
+        for (let i = 0; i < arguments.length; i++) params += (arguments[i] + (i == arguments.length - 1 ? `` : ` && `));
         return arguments ? await this.adb([`-s`, `${this.ip}`, `shell`, params], params) : false;
     }
 
@@ -269,41 +269,6 @@ class adb extends EventEmitter {
         if (isShell) return this.osShell(finalKeycods);
         else return this.adbShell(finalKeycods);
     }
-    // TODO: Test on more device
-    _currentPlayback = async function () {
-        if (!this.isAwake) {
-            this.isPlayback = false;
-            return { result: this.isPlayback, message: `Playback is always off when device is sleeping` };
-        }
-
-        let { result, message } = await this.adbShell(`dumpsys media_session | grep -e 'Media button session is' -e 'AlexaMediaPlayerRuntime'`);
-        if (this.currentAppID == this.HOME_APP_ID || message.includes(this.currentAppID) || message.includes(`AlexaMediaPlayerRuntime`)) {
-            let output = await this.adbShell(`dumpsys media_session | grep 'state=resultState'`);
-            if (!output.result) output = await this.adbShell(`dumpsys media_session | grep 'state=PlaybackState'`);
-
-            result = output.message == `` ? false : (output.message.includes(`state=3`) ? true : false);
-        } else {
-            let { message } = await this.adbShell(`dumpsys audio | grep 'player piid:' | grep ' state:'${this.canUseTail ? ` | tail -1` : ``}`);
-
-            if (message === true) result = false;
-            else {
-                message = message.split(`\n`);
-                message = message[message.length - 1].trim();
-                result = message.includes(`state:started`) ? true : false;
-            }
-        }
-
-        if (result) this.playbackTimestamp = Date.now();
-        if (this.isPlayback != result || !this.isInitilized) {
-            if (Date.now() - this.playbackTimestamp >= this.playbackDelayOff || !this.isPlayback) {
-                this.playbackTimestamp = Date.now();
-                this.isPlayback = result;
-                this.emit(`playback`, this.currentAppID, this.isPlayback);
-            }
-        }
-
-        return { result, message };
-    }
     currentPlayback = async function () {
         if (!this.isAwake) {
             this.isPlayback = false;
@@ -311,19 +276,7 @@ class adb extends EventEmitter {
         }
 
         let { result, message } = await this.adbShell(`dumpsys media_session | grep -e 'Media button session is' -e 'AlexaMediaPlayerRuntime' -e 'state=PlaybackState {state=3' -e 'state=resultState'`);
-        if (this.currentAppID == this.HOME_APP_ID || message.includes(this.currentAppID) || message.includes(`AlexaMediaPlayerRuntime`)) {
-            result = message.includes(`state=3`) ? true : false;
-        } else {
-            let output = await this.adbShell(`dumpsys audio | grep 'player piid:' | grep ' state:'${this.canUseTail ? ` | tail -1` : ``}`);
-
-            message = output.message;
-            if (message === true) result = false;
-            else {
-                message = message.split(`\n`);
-                message = message[message.length - 1].trim();
-                result = message.includes(`state:started`) ? true : false;
-            }
-        }
+        result = ((this.currentAppID == this.HOME_APP_ID || message.includes(this.currentAppID) || message.includes(`AlexaMediaPlayerRuntime`)) && message.includes(`state=3`)) ? true : false;
 
         if (result) this.playbackTimestamp = Date.now();
         if (this.isPlayback != result || !this.isInitilized) {
