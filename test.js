@@ -16,7 +16,7 @@ shield.state().then(({ result, message }) => {
 // Connected and looped
 shield.update().then(() => {
     shield.launchApp(`shell adb devices`).then(({ result, message }) => {
-        console.log(result, message.includes(ip));
+        console.log(result, message);
     });
 
     shield.powerOn().catch(message => {
@@ -53,9 +53,9 @@ shield.on("sleep", function () {
 shield.on("appChange", function () {
     console.log("App change to:", this.currentAppID);
 });
-shield.on("playback", function (app, status) {
-    console.log("Playback:", app, status);
+shield.on("playback", function (app, status, ouput) {
+    console.log("Playback:", status, app, ouput);
 });
-// shield.on("update", function () {
-//     console.log(Date());
-// });
+shield.on("update", function () {
+    // console.log(Date());
+});

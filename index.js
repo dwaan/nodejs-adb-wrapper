@@ -269,14 +269,33 @@ class adb extends EventEmitter {
         if (isShell) return this.osShell(finalKeycods);
         else return this.adbShell(finalKeycods);
     }
+
+    _getCurrentPlayback = async function () {
+        return new Promise(resolve => {
+            Promise.all([
+                this.adbShell(`dumpsys media_session | grep 'AlexaMediaPlayerRuntime'`),
+                this.adbShell(`dumpsys media_session | grep 'Media button session is'`),
+                this.adbShell(`dumpsys media_session | grep 'state=PlaybackState {state=3'`),
+                this.adbShell(`dumpsys audio | grep 'player piid:' | grep ' state:' ${this.canUseTail ? '| tail -1' : ''}`)
+            ]).then(values => {
+                // Trim audio when tail is not supported
+                values[3].message = values[3].message.trim().split("\n");
+                values[3].message = values[3].message[values[3].message.length - 1].trim();
+
+                let message = `\n1. Alexa Media: ` + values[0].message + `\n2. Media: ` + values[1].message + `\n3. Playback State: ` + values[2].message + `\n3. Audio State: ` + values[3].message;
+                let result = ((this.currentAppID == this.HOME_APP_ID || values[1].message.includes(this.currentAppID) || values[0].message.includes(`AlexaMediaPlayerRuntime`)) && values[2].message.includes(`state=3`)) ? true : values[3].message.includes("state:started") ? true : false;
+
+                resolve({ result, message });
+            });
+        });
+    }
     currentPlayback = async function () {
         if (!this.isAwake) {
             this.isPlayback = false;
             return { result: this.isPlayback, message: `Playback is always off when device is sleeping` };
         }
 
-        let { result, message } = await this.adbShell(`dumpsys media_session | grep -e 'Media button session is' -e 'AlexaMediaPlayerRuntime' -e 'state=PlaybackState' -e 'state=resultState'`);
-        result = ((this.currentAppID == this.HOME_APP_ID || message.includes(this.currentAppID) || message.includes(`AlexaMediaPlayerRuntime`)) && message.includes(`state=3`)) ? true : false;
+        let { result, message } = await this._getCurrentPlayback();
 
         if (result) this.playbackTimestamp = Date.now();
         if (this.isPlayback != result || !this.isInitilized) {
