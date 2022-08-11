@@ -125,19 +125,17 @@ class adb extends EventEmitter {
             });
         }
 
-        if (result) {
-            message = message.toLowerCase();
-            if (message.includes(`device still authorizing`)) result = this.DEVICE_AUTHORIZING;
-            else if (message.includes(`unauthorized`)) result = this.DEVICE_UNAUTHORIZED;
-            else if (message.includes(`connection refused`)) result = this.CONNECTION_REFUSED;
-            else if (message.includes(`connection reset by peer`)) result = this.CONNECTION_RESET;
-            else if (message.includes(`operation timed out`)) result = this.TIME_OUT;
-            else if (message.includes(`failed to connect`)) result = this.FAILED;
-            else if (!message.includes(`already connected`)) result = this.DISCONNECTED;
-            else result = this.CONNECTED;
-        } else result = this.DISCONNECTED;
+        message = message.toLowerCase();
+        if (message.includes(`device still authorizing`)) result = this.DEVICE_AUTHORIZING;
+        else if (message.includes(`unauthorized`)) result = this.DEVICE_UNAUTHORIZED;
+        else if (message.includes(`connection refused`)) result = this.CONNECTION_REFUSED;
+        else if (message.includes(`connection reset by peer`)) result = this.CONNECTION_RESET;
+        else if (message.includes(`operation timed out`) || message.includes(`timeout`)) result = this.TIME_OUT;
+        else if (message.includes(`failed to connect`)) result = this.FAILED;
+        else if (message.includes(`already connected`)) result = this.CONNECTED;
+        else result = this.DISCONNECTED;
 
-        if (this.connected != result || !this.isInitilized) {
+        if ((this.connected != result && result != this.TIME_OUT) || !this.isInitilized) {
             this.connected = result;
             this.emit(this.connected == this.DEVICE_UNAUTHORIZED ? "unauthorized" : this.connected == this.CONNECTED ? `connected` : `disconnected`);
         }
