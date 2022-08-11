@@ -111,29 +111,20 @@ class adb extends EventEmitter {
         let result = this.DISCONNECTED;
         let message = "";
         let connect = await this.adb([`connect`, `${this.ip}`]);
-        let device = {};
+        let device = await this.adb([`devices`]);
 
-        if (!connect.result) {
-            message = connect.message;
-        } else {
-            result = true;
-            device = await this.adb([`devices`]);
-            device.message.split("\n").forEach(m => {
-                if (m.includes(`${this.ip}`)) {
-                    message = m;
-                }
-            });
-        }
-
-        message = message.toLowerCase();
-        if (message.includes(`device still authorizing`)) result = this.DEVICE_AUTHORIZING;
-        else if (message.includes(`unauthorized`)) result = this.DEVICE_UNAUTHORIZED;
-        else if (message.includes(`connection refused`)) result = this.CONNECTION_REFUSED;
-        else if (message.includes(`connection reset by peer`)) result = this.CONNECTION_RESET;
-        else if (message.includes(`operation timed out`) || message.includes(`timeout`)) result = this.TIME_OUT;
-        else if (message.includes(`failed to connect`)) result = this.FAILED;
-        else if (message.includes(`already connected`)) result = this.CONNECTED;
-        else result = this.DISCONNECTED;
+        connect.message = connect.message.toLowerCase();
+        device.message.split("\n").forEach(output => {
+            if (output.includes(`${this.ip}`)) message = output;
+        });
+        message = device.message.toLowerCase();
+        if (connect.message.includes(`device still authorizing`) || message.includes(`unauthorized`)) result = this.DEVICE_AUTHORIZING;
+        else if (connect.message.includes(`operation timed out`) || connect.message.includes(`timeout`)) result = this.TIME_OUT;
+        else if (connect.message.includes(`connection refused`)) result = this.CONNECTION_REFUSED;
+        else if (connect.message.includes(`connection reset by peer`)) result = this.CONNECTION_RESET;
+        else if (connect.message.includes(`failed to connect`)) result = this.FAILED;
+        else if (connect.message.includes(`already connected`) || message.includes(`device`)) result = this.CONNECTED;
+        message = connect.message;
 
         if ((this.connected != result && result != this.TIME_OUT) || !this.isInitilized) {
             this.connected = result;
