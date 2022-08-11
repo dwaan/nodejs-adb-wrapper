@@ -2,7 +2,7 @@ var adb = require('../nodejs-adb-wrapper');
 
 let ip = `192.168.1.108`;
 let shield = new adb(ip, {
-    path: "/usr/local/bin/adb",
+    // path: "/usr/local/bin/adb",
     interval: 2000
 });
 
@@ -37,10 +37,13 @@ shield.on("powerOnFailed", function () {
 });
 
 shield.on("connected", function () {
-    console.log("Connected");
+    console.log("Device Connected");
 });
 shield.on("disconnected", function () {
-    console.log("Disconnected");
+    console.log("Device Disconnected");
+});
+shield.on("unauthorized", function () {
+    console.log("Device Unauthoried");
 });
 
 shield.on("awake", function () {

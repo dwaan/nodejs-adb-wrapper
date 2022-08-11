@@ -108,12 +108,27 @@ class adb extends EventEmitter {
     connect = async function () {
         if (this.isAwake) return { result: true, message: `` };
 
-        let { result, message } = await this.adb([`connect`, `${this.ip}`]);
+        let result = this.DISCONNECTED;
+        let message = "";
+        let connect = await this.adb([`connect`, `${this.ip}`]);
+        let device = {};
+
+        if (!connect.result) {
+            message = connect.message;
+        } else {
+            result = true;
+            device = await this.adb([`devices`]);
+            device.message.split("\n").forEach(m => {
+                if (m.includes(`${this.ip}`)) {
+                    message = m;
+                }
+            });
+        }
 
         if (result) {
             message = message.toLowerCase();
             if (message.includes(`device still authorizing`)) result = this.DEVICE_AUTHORIZING;
-            else if (message.includes(`device unauthorized`)) result = this.DEVICE_UNAUTHORIZED;
+            else if (message.includes(`unauthorized`)) result = this.DEVICE_UNAUTHORIZED;
             else if (message.includes(`connection refused`)) result = this.CONNECTION_REFUSED;
             else if (message.includes(`connection reset by peer`)) result = this.CONNECTION_RESET;
             else if (message.includes(`operation timed out`)) result = this.TIME_OUT;
@@ -124,7 +139,7 @@ class adb extends EventEmitter {
 
         if (this.connected != result || !this.isInitilized) {
             this.connected = result;
-            this.emit(this.connected == this.CONNECTED ? `connected` : `disconnected`);
+            this.emit(this.connected == this.DEVICE_UNAUTHORIZED ? "unauthorized" : this.connected == this.CONNECTED ? `connected` : `disconnected`);
         }
 
         return { result, message };
