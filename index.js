@@ -75,11 +75,12 @@ class adb extends EventEmitter {
                 let message = error ? stderr.trim() : stdout.trim();
                 let result = error ? false : true;
 
-                resolve({ result, message: message == `` ? `Timeout` : message });
+                resolve({ result, message: message == `` ? error ? `Timeout` : `Success` : message });
             }, {
                 windowsHide: true
             });
 
+            // Kill process when timeout
             this.autoKill(id);
         });
     }
