@@ -109,7 +109,7 @@ class adb extends EventEmitter {
     connect = async function () {
         if (this.isAwake) return { result: true, message: `` };
 
-        let result = this.DISCONNECTED;
+        let result = this.CONNECTED;
         let message = "";
         let connect = await this.adb([`connect`, `${this.ip}`]);
         let device = await this.adb([`devices`]);
@@ -124,7 +124,7 @@ class adb extends EventEmitter {
         else if (connect.message.includes(`connection refused`)) result = this.CONNECTION_REFUSED;
         else if (connect.message.includes(`connection reset by peer`)) result = this.CONNECTION_RESET;
         else if (connect.message.includes(`failed to connect`)) result = this.FAILED;
-        else if (connect.message.includes(`already connected`) || message.includes(`device`)) result = this.CONNECTED;
+        else if (!connect.message.includes(`already connected`) && !message.includes(`device`)) result = this.DISCONNECTED
         message = connect.message;
 
         if ((this.connected != result && result != this.TIME_OUT) || !this.isInitilized) {
@@ -177,7 +177,7 @@ class adb extends EventEmitter {
         if (result != this.isAwake || !this.isInitilized) {
             this.isAwake = result;
 
-            if (!this.isOnPowerCycle) this.emit(this.isAwake ? `awake` : `sleep`);
+            if (!this.isOnPowerCycle || !this.isInitilized) this.emit(this.isAwake ? `awake` : `sleep`);
         }
 
         return { result, message: message.join(`=`) };
