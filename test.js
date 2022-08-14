@@ -2,28 +2,36 @@ var adb = require('../nodejs-adb-wrapper');
 
 let ip = `192.168.1.108`;
 let shield = new adb(ip, {
-    // path: "/usr/local/bin/adb",
+    path: "/usr/local/bin/adb",
     interval: 2000
 });
 
 // Not connected yet will throw error
 shield.state().then(({ result, message }) => {
-    console.log(result, message);
-}).catch(message => {
-    console.log(message);
-});
+    if (result) {
+        console.log("State - Success:", message);
+    } else {
+        console.log("State - Error:", message);
+    }
+})
 
 // Connected and looped
 shield.update().then(() => {
     shield.launchApp(`shell adb devices`).then(({ result, message }) => {
-        console.log(result, message);
+        if (result) {
+            console.log("Shell - success:", message);
+        } else {
+            console.log("Shell - failed:", message);
+        }
     });
 
-    shield.powerOn().catch(message => {
-        console.log(message);
+    shield.powerOn().then(({ result, message }) => {
+        if (result) {
+            console.log("Power on - success:", message);
+        } else {
+            console.log("Power on - failed:", message);
+        }
     });
-}).catch(message => {
-    console.log(message);
 });
 
 shield.on("powerOn", function () {
@@ -43,7 +51,7 @@ shield.on("disconnected", function () {
     console.log("Device Disconnected");
 });
 shield.on("unauthorized", function () {
-    console.log("Device Unauthoried");
+    console.log("Device Unauthorized");
 });
 
 shield.on("awake", function () {

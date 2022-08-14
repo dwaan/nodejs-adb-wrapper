@@ -17,6 +17,20 @@ class adb extends EventEmitter {
     TIME_OUT = 5;
     FAILED = 6;
     CONNECTED = 7;
+    NO_ADB = 8
+
+    // Lang
+    LANG = [
+        `Device is not connected`,
+        `Device is authorizing`,
+        `Device is not authorized`,
+        `Connection refused`,
+        `Connection Reset`,
+        `Timeout`,
+        `Failed`,
+        `Connected`,
+        `Can't fine ADB executable file`
+    ];
 
     constructor(ip, config = {}) {
         if (!ip) return;
@@ -75,7 +89,7 @@ class adb extends EventEmitter {
                 let message = error ? stderr.trim() : stdout.trim();
                 let result = error ? false : true;
 
-                resolve({ result, message: message == `` ? error ? `Timeout` : `Success` : message });
+                resolve({ result, message: result ? message : `Timeout` });
             }, {
                 windowsHide: true
             });
@@ -104,7 +118,12 @@ class adb extends EventEmitter {
 
     // Connection helper
     check = async function () {
-        return await this.adb([`start-server`]);
+        let { result, message } = await this.adb([`start-server`]);
+        if (!result) {
+            this.connected = this.NO_ADB;
+            message = this.LANG[this.connected];
+        }
+        return { result, message };
     }
     connect = async function () {
         if (this.isAwake) return { result: true, message: `` };
@@ -119,15 +138,17 @@ class adb extends EventEmitter {
             if (output.includes(`${this.ip}`)) message = output;
         });
         message = device.message.toLowerCase();
-        if (connect.message.includes(`device still authorizing`) || message.includes(`unauthorized`)) result = this.DEVICE_AUTHORIZING;
+        if (connect.message.includes(`device still authorizing`)) result = this.DEVICE_AUTHORIZING;
+        else if (message.includes(`unauthorized`)) result = this.DEVICE_UNAUTHORIZED;
         else if (connect.message.includes(`operation timed out`) || connect.message.includes(`timeout`)) result = this.TIME_OUT;
         else if (connect.message.includes(`connection refused`)) result = this.CONNECTION_REFUSED;
         else if (connect.message.includes(`connection reset by peer`)) result = this.CONNECTION_RESET;
         else if (connect.message.includes(`failed to connect`)) result = this.FAILED;
-        else if (!connect.message.includes(`already connected`) && !message.includes(`device`)) result = this.DISCONNECTED
-        message = connect.message;
+        else if (!connect.message.includes(`already connected`) && !message.includes(`device`)) result = this.DISCONNECTED;
 
         if ((this.connected != result && result != this.TIME_OUT) || !this.isInitilized) {
+            if (this.connected == this.DEVICE_UNAUTHORIZED && result != this.DEVICE_UNAUTHORIZED) this.emit("authorized");
+
             this.connected = result;
             this.emit(this.connected == this.DEVICE_UNAUTHORIZED ? "unauthorized" : this.connected == this.CONNECTED ? `connected` : `disconnected`);
         }
@@ -139,9 +160,9 @@ class adb extends EventEmitter {
         this.kill();
     }
     update = async function (callback) {
+        // Check if ADB is exist
         let { result, message } = await this.check();
-
-        if (!result) throw `Can't find ADB executable file`;
+        if (!result) return { result, message };
 
         await this.connect();
         await this.state();
@@ -167,7 +188,7 @@ class adb extends EventEmitter {
 
     // Statuses helper
     state = async function () {
-        if (!this.connected) return { result: false, message: `Device is not connected` };
+        if (this.connected != this.CONNECTED) return { result: false, message: this.LANG[this.connected] };
 
         let { result, message } = await this.adbShell(`dumpsys power | grep mHoldingDisplay`);
 
@@ -316,6 +337,8 @@ class adb extends EventEmitter {
 
     // Power helper
     power = async function (keycode, isPowerOn = true) {
+        if (this.connected != this.CONNECTED) return { result: false, message: this.LANG[this.connected] };
+
         let retry = this.retryPowerOn;
 
         this.isOnPowerCycle = true;
