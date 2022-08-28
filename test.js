@@ -8,29 +8,21 @@ let shield = new adb(ip, {
 
 // Not connected yet will throw error
 shield.state().then(({ result, message }) => {
-    if (result) {
-        console.log("State - Success:", message);
-    } else {
-        console.log("State - Error:", message);
-    }
+    if (result) console.log("State - Success:", message);
+    else console.log("State - Error:", message);
 })
 
 // Connected and looped
 shield.update().then(() => {
     shield.launchApp(`shell adb devices`).then(({ result, message }) => {
-        if (result) {
-            console.log("Shell - success:", message);
-        } else {
-            console.log("Shell - failed:", message);
-        }
+        if (result) console.log("Shell - success:", message);
+        else console.log("Shell - failed:", message);
     });
 
     shield.powerOn().then(({ result, message }) => {
-        if (result) {
-            console.log("Power on - success:", message);
-        } else {
-            console.log("Power on - failed:", message);
-        }
+        if (result) console.log("Power on - success:", message);
+        else console.log("Power on - failed:", message);
+
     });
 });
 
@@ -67,6 +59,8 @@ shield.on("appChange", function () {
 shield.on("playback", function (app, status, ouput) {
     console.log("Playback:", status, app, ouput);
 });
+var count = 0
 shield.on("update", function () {
-    // console.log(Date());
+    if (count++ == 0) console.log(Date());
+    if (count >= 10) count = 0;
 });

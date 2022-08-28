@@ -45,6 +45,7 @@ class adb extends EventEmitter {
         if (this.timeout < 500) this.timeout = 500;
         this.playbackDelayOff = config.playbackDelayOff || 10000;
         this.retryPowerOn = config.retryPowerOn || 10;
+        this.debug = config.debug || true;
 
         // Child process
         this.child = [];
@@ -69,6 +70,7 @@ class adb extends EventEmitter {
         // Loop process
         this.loop = false;
     }
+
 
     // Helper
     sleep = function (ms) {
@@ -123,6 +125,7 @@ class adb extends EventEmitter {
             this.connected = this.NO_ADB;
             message = this.LANG[this.connected];
         }
+
         return { result, message };
     }
     connect = async function () {
