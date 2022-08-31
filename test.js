@@ -2,7 +2,7 @@ var adb = require('../nodejs-adb-wrapper');
 
 let ip = `192.168.1.108`;
 let shield = new adb(ip, {
-    path: "/usr/local/bin/adb",
+    // path: "/usr/local/bin/adb",
     interval: 2000
 });
 
@@ -19,10 +19,15 @@ shield.update().then(() => {
         else console.log("Shell - failed:", message);
     });
 
-    shield.powerOn().then(({ result, message }) => {
-        if (result) console.log("Power on - success:", message);
-        else console.log("Power on - failed:", message);
-
+    console.log("Manually turn off");
+    shield.powerOff(`KEYCODE_SLEEP`).then(({ result, message }) => {
+        if (result) console.log("Power off - success:", message);
+        else console.log("Power off - failed:", message);
+        console.log("Manually turn on");
+        shield.powerOn(`KEYCODE_WAKEUP`).then(({ result, message }) => {
+            if (result) console.log("Power on - success:", message);
+            else console.log("Power on - failed:", message);
+        });
     });
 });
 
