@@ -204,7 +204,7 @@ class adb extends EventEmitter {
         this.loop = setInterval(() => {
             Promise.all([
                 this.connect(),
-                this.state(true),
+                this.state(),
                 this.currentApp(),
                 this.currentPlayback()
             ]).then(output => {
@@ -217,7 +217,7 @@ class adb extends EventEmitter {
     }
 
     // Statuses helper
-    state = async function (emit = true) {
+    state = async function (forceEmit = false) {
         if (this.connected != this.CONNECTED) return { result: false, message: this.LANG[this.connected] };
 
         let { result, message } = await this.adbShell(`dumpsys power | grep mHoldingDisplay`);
@@ -226,10 +226,10 @@ class adb extends EventEmitter {
         message = result ? message.split(`=`) : [];
         result = message[1] === `true` ? true : false;
 
-        if (result != this.isAwake || !this.isInitilized) {
+        if (forceEmit || result != this.isAwake || !this.isInitilized) {
             this.isAwake = result;
 
-            if (emit && (!this.isOnPowerCycle || !this.isInitilized)) {
+            if (forceEmit || !this.isOnPowerCycle || !this.isInitilized) {
                 this.emitUpdate(this.isAwake ? `awake` : `sleep`);
             }
         }
@@ -390,9 +390,7 @@ class adb extends EventEmitter {
             do {
                 await this.sendKeycode(keycode || `KEYCODE_POWER`);
                 await this.sleep(100);
-
-                // Check device state without emiting
-                await this.state(false);
+                await this.state();
 
                 this.emitUpdate(`debugPower${isPowerOn ? `On` : `Off`}`, { awake: this.isAwake }, retry);
 
@@ -411,11 +409,8 @@ class adb extends EventEmitter {
         this.emitUpdate(`power${isPowerOn ? `On` : `Off`}Status`, message);
 
         // Emit events
-        if (result) {
-            this.isAwake = isPowerOn;
-            this.isOnPowerCycle = false;
-            await this.state();
-        }
+        this.isOnPowerCycle = false;
+        await this.state(true);
 
         if (result) return { result, message };
         else throw message;
