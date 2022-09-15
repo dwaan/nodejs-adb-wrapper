@@ -17,7 +17,7 @@ class adb extends EventEmitter {
     TIME_OUT = 5;
     FAILED = 6;
     CONNECTED = 7;
-    NO_ADB = 8
+    NO_ADB = 8;
 
     // Lang
     LANG = [
@@ -62,6 +62,10 @@ class adb extends EventEmitter {
         this.currentAppID = false;
         this.canUseTail = false;
         this.isOnPowerCycle = false;
+
+        // Device connection
+        this.connecting = true;
+        this.reconnecting = 5;
 
         // Timestamp
         this.playbackTimestamp = Date.now();
@@ -128,6 +132,8 @@ class adb extends EventEmitter {
     connect = async function () {
         if (this.isAwake) return { result: true, message: `` };
 
+        if (this.connecting) this.emitUpdate(`connecting`);
+
         let result = this.CONNECTED;
         let message = "";
         let connect = await this.adb([`connect`, `${this.ip}`]);
@@ -138,6 +144,7 @@ class adb extends EventEmitter {
             if (output.includes(`${this.ip}`)) message = output;
         });
         message = device.message.toLowerCase();
+        // console.log("Hi", message);
         if (connect.message.includes(`device still authorizing`)) result = this.DEVICE_AUTHORIZING;
         else if (message.includes(`unauthorized`)) result = this.DEVICE_UNAUTHORIZED;
         else if (connect.message.includes(`operation timed out`) || connect.message.includes(`timeout`)) result = this.TIME_OUT;
@@ -147,10 +154,32 @@ class adb extends EventEmitter {
         else if (!connect.message.includes(`already connected`) && !message.includes(`device`)) result = this.DISCONNECTED;
 
         if ((this.connected != result && result != this.TIME_OUT) || !this.isInitilized) {
-            if (this.connected == this.DEVICE_UNAUTHORIZED && result != this.DEVICE_UNAUTHORIZED) this.emit("authorized");
+            if (this.connected == this.DEVICE_UNAUTHORIZED && result != this.DEVICE_UNAUTHORIZED) this.emitUpdate(`authorized`);
+
+            if (this.connected == this.DEVICE_UNAUTHORIZED || this.connected != this.CONNECTED) this.connecting = false;
 
             this.connected = result;
-            this.emit(this.connected == this.DEVICE_UNAUTHORIZED ? "unauthorized" : this.connected == this.CONNECTED ? `connected` : `disconnected`);
+            switch (this.connected) {
+                case this.DEVICE_UNAUTHORIZED:
+                    this.emitUpdate("unauthorized");
+                    break;
+                case this.CONNECTED:
+                    this.emitUpdate("connected");
+                    break;
+                case this.DISCONNECTED:
+                    this.emitUpdate("disconnected");
+                    break;
+                case this.TIME_OUT:
+                    this.emitUpdate("timeout");
+                    break;
+
+                case this.DEVICE_AUTHORIZING:
+                    break;
+
+                default:
+                    this.emitUpdate("failed");
+                    break;
+            }
         }
 
         return { result, message };
@@ -180,14 +209,14 @@ class adb extends EventEmitter {
             ]).then(output => {
                 if (callback) callback(output);
             });
-            this.emit(`update`);
+            this.emitUpdate(`status`);
         }, this.interval);
 
         return { result, message };
     }
 
     // Statuses helper
-    state = async function () {
+    state = async function (emit = true) {
         if (this.connected != this.CONNECTED) return { result: false, message: this.LANG[this.connected] };
 
         let { result, message } = await this.adbShell(`dumpsys power | grep mHoldingDisplay`);
@@ -198,7 +227,7 @@ class adb extends EventEmitter {
         if (result != this.isAwake || !this.isInitilized) {
             this.isAwake = result;
 
-            if (!this.isOnPowerCycle || !this.isInitilized) this.emit(this.isAwake ? `awake` : `sleep`);
+            if (emit && (!this.isOnPowerCycle || !this.isInitilized)) this.emitUpdate(this.isAwake ? `awake` : `sleep`);
         }
 
         return { result, message: message.join(`=`) };
@@ -258,7 +287,7 @@ class adb extends EventEmitter {
         if (result || !this.isInitilized) {
             if (this.currentAppID != message) {
                 this.currentAppID = message;
-                this.emit(`appChange`, this.currentAppID);
+                this.emitUpdate(`appChange`, this.currentAppID);
             }
         }
 
@@ -296,6 +325,11 @@ class adb extends EventEmitter {
         else return this.adbShell(finalKeycods);
     }
 
+    // Emiter
+    emitUpdate = function (type, message = "", debugMessage = "") {
+        this.emit(`update`, type, message, debugMessage);
+    }
+
     _getCurrentPlayback = async function () {
         return new Promise(resolve => {
             Promise.all([
@@ -328,7 +362,10 @@ class adb extends EventEmitter {
             if (Date.now() - this.playbackTimestamp >= this.playbackDelayOff || !this.isPlayback) {
                 this.playbackTimestamp = Date.now();
                 this.isPlayback = result;
-                this.emit(`playback`, this.currentAppID, this.isPlayback, message);
+                this.emitUpdate(`playback`, {
+                    appId: this.currentAppID,
+                    playing: this.isPlayback
+                }, message);
             }
         }
 
@@ -343,12 +380,16 @@ class adb extends EventEmitter {
 
         this.isOnPowerCycle = true;
 
-        this.emit(`power${isPowerOn ? `On` : `Off`}`);
+        this.emitUpdate(`power${isPowerOn ? `On` : `Off`}`);
         if ((isPowerOn && !this.isAwake) || (!isPowerOn && this.isAwake)) {
             do {
                 await this.sendKeycode(keycode || `KEYCODE_POWER`);
-                await this.sleep(500);
-                await this.state();
+                await this.sleep(100);
+
+                // Check device state without emiting
+                await this.state(false);
+
+                this.emitUpdate(`debugPower${isPowerOn ? `On` : `Off`}`, { awake: this.isAwake }, retry);
 
                 if (isPowerOn) {
                     if (this.isAwake) break;
@@ -358,13 +399,11 @@ class adb extends EventEmitter {
                     else break;
                 }
             } while (retry > 0);
-        } else {
-            retry = 10;
-        }
+        } else retry = 10;
 
         let result = retry > 0 ? true : false;
         let message = result ? `Success` : `Failed`;
-        this.emit(`power${isPowerOn ? `On` : `Off`}${message}`);
+        this.emitUpdate(`power${isPowerOn ? `On` : `Off`}Status`, message);
 
         // Emit events
         this.isOnPowerCycle = false;
