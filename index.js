@@ -136,8 +136,9 @@ class adb extends EventEmitter {
 
         let result = this.CONNECTED;
         let message = "";
-        let connect = await this.adb([`connect`, `${this.ip}`]);
-        let device = await this.adb([`devices`]);
+
+        const connect = await this.adb([`connect`, `${this.ip}`]);
+        const device = await this.adb([`devices`]);
 
         connect.message = connect.message.toLowerCase();
         device.message.split("\n").forEach(output => {
@@ -203,7 +204,7 @@ class adb extends EventEmitter {
         this.loop = setInterval(() => {
             Promise.all([
                 this.connect(),
-                this.state(),
+                this.state(true),
                 this.currentApp(),
                 this.currentPlayback()
             ]).then(output => {
@@ -220,14 +221,17 @@ class adb extends EventEmitter {
         if (this.connected != this.CONNECTED) return { result: false, message: this.LANG[this.connected] };
 
         let { result, message } = await this.adbShell(`dumpsys power | grep mHoldingDisplay`);
+        if (!result || message.length <= 0) return { result: false, message: this.LANG[this.TIME_OUT] };
 
         message = result ? message.split(`=`) : [];
-        result = message.length <= 0 ? false : message[1] === `true` ? true : false;
+        result = message[1] === `true` ? true : false;
 
         if (result != this.isAwake || !this.isInitilized) {
             this.isAwake = result;
 
-            if (emit && (!this.isOnPowerCycle || !this.isInitilized)) this.emitUpdate(this.isAwake ? `awake` : `sleep`);
+            if (emit && (!this.isOnPowerCycle || !this.isInitilized)) {
+                this.emitUpdate(this.isAwake ? `awake` : `sleep`);
+            }
         }
 
         return { result, message: message.join(`=`) };
@@ -242,7 +246,7 @@ class adb extends EventEmitter {
         let message = ``;
 
         if (this.inputUseWindows && !this.inputError) {
-            let output = await this.adbShell(`dumpsys window windows | grep -E mFocusedApp`);
+            const output = await this.adbShell(`dumpsys window windows | grep -E mFocusedApp`);
 
             if (output.result) {
                 this.inputUseActivities = false;
@@ -255,7 +259,7 @@ class adb extends EventEmitter {
 
 
         if (this.inputUseActivities && !this.inputError) {
-            let output = await this.adbShell(`dumpsys activity activities | grep ResumedActivity`);
+            const output = await this.adbShell(`dumpsys activity activities | grep ResumedActivity`);
 
             if (output.result) {
                 this.inputUseWindows = false;
@@ -294,7 +298,7 @@ class adb extends EventEmitter {
         return { result, message: this.currentAppID };
     }
     launchApp = async function (param = ``) {
-        let params = param.split(` `);
+        const params = param.split(` `);
 
         if (params[0].toLowerCase() == `shell`) {
             params.splice(0, 1);
@@ -306,23 +310,24 @@ class adb extends EventEmitter {
         }
     }
     sendKeycode = async function (keycode = ``) {
-        let finalKeycods = ``;
-        let keycodes = keycode.split(` `);
+        let finalKeycodes = ``;
         let isShell = false;
+
+        const keycodes = keycode.split(` `);
 
         if (keycodes[0].toLowerCase() == `shell`) {
             isShell = true;
-            for (let i = 1; i < keycodes.length; i++) finalKeycods += `${keycodes[i]} `;
+            for (let i = 1; i < keycodes.length; i++) finalKeycodes += `${keycodes[i]} `;
         } else {
             for (let i = 0; i < keycodes.length; i++) {
-                finalKeycods += `input keyevent ${keycodes[i]}`;
-                if (i < keycodes.length - 1) finalKeycods += ` && `;
+                finalKeycodes += `input keyevent ${keycodes[i]}`;
+                if (i < keycodes.length - 1) finalKeycodes += ` && `;
             }
-            finalKeycods = `${finalKeycods}`;
+            finalKeycodes = `${finalKeycodes}`;
         }
 
-        if (isShell) return this.osShell(finalKeycods);
-        else return this.adbShell(finalKeycods);
+        if (isShell) return this.osShell(finalKeycodes);
+        else return this.adbShell(finalKeycodes);
     }
 
     // Emiter
@@ -401,13 +406,16 @@ class adb extends EventEmitter {
             } while (retry > 0);
         } else retry = 10;
 
-        let result = retry > 0 ? true : false;
-        let message = result ? `Success` : `Failed`;
+        const result = retry > 0 ? true : false;
+        const message = result ? `Success` : `Failed`;
         this.emitUpdate(`power${isPowerOn ? `On` : `Off`}Status`, message);
 
         // Emit events
-        this.isOnPowerCycle = false;
-        await this.state();
+        if (result) {
+            this.isAwake = isPowerOn;
+            this.isOnPowerCycle = false;
+            await this.state();
+        }
 
         if (result) return { result, message };
         else throw message;

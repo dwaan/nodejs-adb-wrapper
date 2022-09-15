@@ -19,16 +19,11 @@ shield.update().then(() => {
         else console.log("Shell - failed:", message);
     });
 
-    // console.log("Manually turn off");
-    // shield.powerOff(`KEYCODE_SLEEP`).then(({ result, message }) => {
-    //     if (result) console.log("Power off - success:", message);
-    //     else console.log("Power off - failed:", message);
     console.log("Manually turn on");
     shield.powerOn(`KEYCODE_WAKEUP`).then(({ result, message }) => {
         if (result) console.log("Power on - success:", message);
         else console.log("Power on - failed:", message);
     });
-    // });
 });
 
 var count = 0
