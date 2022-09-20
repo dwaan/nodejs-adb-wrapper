@@ -66,6 +66,7 @@ class adb extends EventEmitter {
         // Device connection
         this.connecting = true;
         this.reconnecting = 5;
+        this.unauthorized = false;
 
         // Timestamp
         this.playbackTimestamp = Date.now();
@@ -137,6 +138,10 @@ class adb extends EventEmitter {
         let result = this.CONNECTED;
         let message = "";
 
+        // Try to disconnect to see if device can be connected when unauthorzied device is detected
+        if (this.unauthorized) await this.adb([`disconnect`, `${this.ip}`]);
+        this.unauthorized = false;
+
         const connect = await this.adb([`connect`, `${this.ip}`]);
         const device = await this.adb([`devices`]);
 
@@ -145,9 +150,11 @@ class adb extends EventEmitter {
             if (output.includes(`${this.ip}`)) message = output;
         });
 
+        console.log(connect.message, "---", message);
+
         if (connect.message.includes(`device still authorizing`)) result = this.DEVICE_AUTHORIZING;
         else if (message.includes(`unauthorized`)) result = this.DEVICE_UNAUTHORIZED;
-        else if (connect.message.includes(`operation timed out`) || connect.message.includes(`timeout`)) result = this.TIME_OUT;
+        else if (message == "" || connect.message.includes(`operation timed out`) || connect.message.includes(`timeout`)) result = this.TIME_OUT;
         else if (connect.message.includes(`connection refused`)) result = this.CONNECTION_REFUSED;
         else if (connect.message.includes(`connection reset by peer`)) result = this.CONNECTION_RESET;
         else if (connect.message.includes(`failed to connect`)) result = this.FAILED;
@@ -161,6 +168,7 @@ class adb extends EventEmitter {
             this.connected = result;
             switch (this.connected) {
                 case this.DEVICE_UNAUTHORIZED:
+                    this.unauthorized = true;
                     this.emitUpdate("unauthorized");
                     break;
                 case this.CONNECTED:
