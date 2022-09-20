@@ -150,8 +150,6 @@ class adb extends EventEmitter {
             if (output.includes(`${this.ip}`)) message = output;
         });
 
-        console.log(connect.message, "---", message);
-
         if (connect.message.includes(`device still authorizing`)) result = this.DEVICE_AUTHORIZING;
         else if (message.includes(`unauthorized`)) result = this.DEVICE_UNAUTHORIZED;
         else if (message == "" || connect.message.includes(`operation timed out`) || connect.message.includes(`timeout`)) result = this.TIME_OUT;
