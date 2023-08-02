@@ -301,6 +301,14 @@ class adb extends EventEmitter {
             return output;
         }
 
+
+        /**
+         * Get current app id
+         */
+        this.getCurrentAppId = () => {
+            return _currentAppID;
+        }
+
         /**
          * Send keycode(s) or run OS shell command
          * @param {string} keycode - one or more keycodes seperated by space, or os shell command(s) with `shell` identifier at the beginning.
