@@ -392,26 +392,24 @@ class adb extends EventEmitter {
             });
         }
         const _currentPlayback = async () => {
-            if (!_isAwake) {
-                _isPlayback = false;
-                return { result: _isPlayback, message: `Playback is always off when device is sleeping` };
-            }
+            let output = { result: false, message: `` };
 
-            let { result, message } = await _getCurrentPlayback();
+            if (!_isAwake) output.message = `Playback is always off when device is sleeping`;
+            else output = await _getCurrentPlayback();
 
-            if (result) _playbackTimestamp = Date.now();
-            if (_isPlayback != result || _firstRun) {
+            if (output.result) _playbackTimestamp = Date.now();
+            if (_isPlayback != output.result || _firstRun) {
                 if (Date.now() - _playbackTimestamp >= _playbackDelayOff || !_isPlayback) {
                     _playbackTimestamp = Date.now();
-                    _isPlayback = result;
+                    _isPlayback = output.result;
                     _emitUpdate(`playback`, {
                         appId: _currentAppID,
                         playing: _isPlayback
-                    }, message);
+                    }, output.message);
                 }
             }
 
-            return { result, message };
+            return output;
         }
         /**
          * Get playback information
@@ -447,16 +445,6 @@ class adb extends EventEmitter {
             await _checkTail();
             await _currentApp();
             await _currentPlayback();
-
-            // const logcat = await _device.openLogcat();
-            // logcat.on('entry', entry => {
-            //     if (
-            //         entry.message.includes('state=PlaybackState {state=3') ||
-            //         entry.message.includes(`mFocusedApp`) ||
-            //         entry.message.includes(`ResumedActivity`)
-            //     )
-            //         console.log(entry.message)
-            // });
 
             _firstRun = false;
 
