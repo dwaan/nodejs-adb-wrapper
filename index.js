@@ -224,6 +224,12 @@ class adb extends EventEmitter {
         this.powerOff = async keycode => {
             return await _power(keycode || `KEYCODE_POWER`, false);
         }
+        /**
+         * Get power information
+         */
+        this.getPowerStatus = () => {
+            return _isAwake;
+        }
 
         /**
          * Statuses helper
@@ -407,6 +413,13 @@ class adb extends EventEmitter {
 
             return { result, message };
         }
+        /**
+         * Get playback information
+         */
+        this.getPlaybackStatus = () => {
+            return _isPlayback;
+        }
+
 
         /**
          * Get device information
