@@ -1,18 +1,20 @@
-var adb = require('../nodejs-adb-wrapper');
+var adb = require('.');
 
-let ip = `192.168.1.115`;
+let ip = `192.168.1.108`;
 let shield = new adb(ip, {
     path: "/usr/local/bin/adb",
     interval: 1000
 });
 
-// Not connected yet will throw error
+// Probably not connected yet, will throw error
 shield.state().then(({ result, message }) => {
     if (result) console.log("State - Success:", message);
     else console.log("State - Error:", message);
 })
 
-// Connected and looped
+// Connected and looped, update is run by default
+// so this only needed if you want to run something after
+// device is connected
 shield.update().then(() => {
     shield.launchApp(`shell adb devices`).then(({ result, message }) => {
         if (result) console.log("Shell - success:", message);
@@ -20,12 +22,24 @@ shield.update().then(() => {
     });
 
     console.log("Manually turn on");
-    shield.powerOn(`KEYCODE_WAKEUP`).then(({ result, message }) => {
+    shield.powerOn().then(({ result, message }) => {
         if (result) console.log("Power on - success:", message);
         else console.log("Power on - failed:", message);
+
+        console.log("Launching existing apps");
+        shield.launchApp("com.google.android.youtube.tv").then(({result, message}) => {
+            console.log(result, message);
+
+            console.log("Launching non existing apps");
+            shield.launchApp("com.apple.atve.androidtv.appletv").then(({result, message}) => {
+                console.log(result, message);
+            });
+
+        });
     });
 });
 
+// Do something when receiving emit
 var count = 0
 shield.on(`update`, (type, message, debug) => {
     switch (type) {
@@ -55,38 +69,38 @@ shield.on(`update`, (type, message, debug) => {
 
         // App events
         case `appChange`:
-            console.error("🚩 Current app", message);
+            console.info("🚩 Current app", message);
             break;
         case `playback`:
-            console.error("🚩 Playback data", message);
+            console.info("🚩 Playback data", message);
             break;
 
         // Sleep/awake events
         case `awake`:
-            console.error("🚩 Device is awake");
+            console.info("🚩 Device is awake");
             break;
         case `sleep`:
-            console.error("🚩 Device is asleep");
+            console.info("🚩 Device is asleep");
             break;
 
         // Power events
         case `powerOn`:
-            console.error("🚩 Turning power on");
+            console.info("🚩 Turning power on");
             break;
         case `powerOff`:
-            console.error("🚩 Turning power off");
+            console.info("🚩 Turning power off");
             break;
         case `debugPowerOn`:
-            console.error("🚩 Turning power on", message, debug);
+            console.info("🚩 Turning power on", message, debug);
             break;
         case `debugPowerOff`:
-            console.error("🚩 Turning power off", message, debug);
+            console.info("🚩 Turning power off", message, debug);
             break;
         case `powerOnStatus`:
-            console.error("🚩 Turning power on", message);
+            console.info("🚩 Turning power on", message);
             break;
         case `powerOffStatus`:
-            console.error("🚩 Turning power off", message);
+            console.info("🚩 Turning power off", message);
             break;
 
         default:
