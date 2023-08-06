@@ -12,95 +12,101 @@ shield.state().then(({ result, message }) => {
     else console.log("State - Error:", message);
 })
 
-// Connected and looped, update is run by default
-// so this only needed if you want to run something after
-// device is connected
-shield.update().then(() => {
+// Function will be run after connected
+const runAfterConnected = async () => {
     shield.launchApp(`shell adb devices`).then(({ result, message }) => {
         if (result) console.log("Shell - success:", message);
         else console.log("Shell - failed:", message);
     });
 
-    console.log("Manually turn on");
-    shield.powerOn().then(({ result, message }) => {
-        if (result) console.log("Power on - success:", message);
-        else console.log("Power on - failed:", message);
+    // console.log("Manually turn on");
+    // shield.powerOn().then(({ result, message }) => {
+    //     if (result) console.log("Power on - success:", message);
+    //     else console.log("Power on - failed:", message);
 
-        console.log("Launching existing apps");
-        shield.launchApp("com.google.android.youtube.tv").then(({result, message}) => {
+    console.log("Launching existing apps");
+    shield.launchApp("com.google.android.youtube.tv").then(({ result, message }) => {
+        console.log(result, message);
+
+        console.log("Launching non existing apps");
+        shield.launchApp("com.apple.atve.androidtv.appletv").then(({ result, message }) => {
             console.log(result, message);
-
-            console.log("Launching non existing apps");
-            shield.launchApp("com.apple.atve.androidtv.appletv").then(({result, message}) => {
-                console.log(result, message);
-            });
-
         });
+
     });
-});
+    // });
+}
 
 // Do something when receiving emit
 var count = 0
-shield.on(`update`, (type, message, debug) => {
+shield.on(`update`, async (type, message, debug) => {
     switch (type) {
         // Connection events
+        case `firstrun`:
+            console.log("🚩 - First time device is connected");
+
+            // runAfterConnected();
+            console.log("Running monkey");
+            await shield.monkey();
+
+            break;
         case `connecting`:
-            console.log("🚩 Connecting...");
+            console.log("🚩 - Connecting...");
             break;
         case `timeout`:
-            console.log("🚩 Timeout...");
+            console.log("🚩 - Timeout...");
             break;
         case `status`:
             if (count++ == 0) console.info(Date());
             if (count >= 60) count = 0;
             break;
         case `connected`:
-            console.log("🚩 Device is connected");
+            console.log("🚩 - Device is connected");
             break;
         case `disconnected`:
-            console.log("🚩 Device is not connected");
+            console.log("🚩 - Device is not connected");
             break;
         case `authorized`:
-            console.info("🚩 Device is authorized");
+            console.info("🚩 - Device is authorized");
             break;
         case `unauthorized`:
-            console.error("🚩 Device is unauthorized");
+            console.error("🚩 - Device is unauthorized");
             break;
 
         // App events
         case `appChange`:
-            console.info("🚩 Current app", message);
+            console.info("🚩 - Current app", message);
             break;
         case `playback`:
-            console.info("🚩 Playback data", message);
+            console.info("🚩 - Playback data", message);
             break;
 
         // Sleep/awake events
         case `awake`:
-            console.info("🚩 Device is awake");
+            console.info("🚩 - Device is awake");
             break;
         case `sleep`:
-            console.info("🚩 Device is asleep");
+            console.info("🚩 - Device is asleep");
             break;
 
         // Power events
         case `powerOn`:
-            console.info("🚩 Turning power on");
+            console.info("🚩 - Turning power on");
             break;
         case `powerOff`:
-            console.info("🚩 Turning power off");
+            console.info("🚩 - Turning power off");
             break;
         case `debugPowerOn`:
-            console.info("🚩 Turning power on", message, debug);
+            console.info("🚩 - Turning power on", message, debug);
             break;
         case `debugPowerOff`:
-            console.info("🚩 Turning power off", message, debug);
+            console.info("🚩 - Turning power off", message, debug);
             break;
         case `powerOnStatus`:
-            console.info("🚩 Turning power on", message);
+            console.info("🚩 - Turning power on", message);
             break;
         case `powerOffStatus`:
-            console.info("🚩 Turning power off", message);
+            console.info("🚩 - Turning power off", message);
             break;
 
         default:

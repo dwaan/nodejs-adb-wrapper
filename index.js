@@ -109,7 +109,10 @@ class adb extends EventEmitter {
         const _adb = async command => {
             let output = { result: false, message: '' };
             if (!command) return output;
-            if (!this.isConnected()) return output;
+            if (!this.isConnected()) {
+                const result = await _connect();
+                if (!result) return output;
+            }
 
             try {
                 const message = await Adb.util.readAll(await _device.shell(command));
