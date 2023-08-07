@@ -249,7 +249,7 @@ class adb extends EventEmitter {
          * @param {string} keycode - (optional) ADB keycode for power off/sleep
          */
         this.powerOff = async keycode => {
-            if (_isAwake) return { result: true, message: `Device already sleep` };
+            if (!_isAwake) return { result: true, message: `Device already sleep` };
             return await _power(keycode || `KEYCODE_POWER`, false);
         }
         /**
