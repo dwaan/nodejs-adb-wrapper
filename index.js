@@ -75,6 +75,9 @@ class adb extends EventEmitter {
         // Current class
         const _this = this;
 
+        const disconnectedMessage = { result: '', message: `Device is not connected` };
+        const sleepMessage = { result: '', message: `Device is sleep` };
+
 
         //
         // All public and private functions
@@ -84,15 +87,19 @@ class adb extends EventEmitter {
         * Connect to device
         */
         const _connect = async () => {
-            await _client.connect(_ip);
+            try {
+                await _client.connect(_ip);
 
-            _devices = await _client.listDevices();
-            const current_device = _devices.filter((obj) => obj.id.includes(_ip))[0];
+                _devices = await _client.listDevices();
+                const current_device = _devices.filter((obj) => obj.id.includes(_ip))[0];
 
-            _device = _client.getDevice(current_device.id);
+                _device = _client.getDevice(current_device.id);
 
-            if (!current_device) _connected = this.DISCONNECTED;
-            else _connected = this.CONNECTED;
+                if (!current_device) _connected = this.DISCONNECTED;
+                else _connected = this.CONNECTED;
+            } catch (err) {
+                _connected = this.TIME_OUT;
+            }
 
             return _connected;
         }
@@ -107,11 +114,17 @@ class adb extends EventEmitter {
         * Run adb shell or shell command
         */
         const _adb = async command => {
-            let output = { result: false, message: '' };
+            let output = { result: false, message: 'Error while sending adb command(s)' };
+
             if (!command) return output;
+
             if (!this.isConnected()) {
                 const result = await _connect();
-                if (!result) return output;
+                if (result !== this.CONNECTED) {
+                    if (result === this.TIME_OUT) output.message = this.LANG[this.TIME_OUT];
+                    else if (result === this.DISCONNECTED) output.message = this.LANG[this.DISCONNECTED];
+                    return output;
+                }
             }
 
             try {
@@ -177,19 +190,29 @@ class adb extends EventEmitter {
          */
         const _power = async (keycode, isPowerOn = true) => {
             let output = { result: false, message: '' };
+
+            if (!this.isConnected()) {
+                const result = await _connect();
+                if (result !== this.CONNECTED) {
+                    if (result === this.TIME_OUT) output.message = this.LANG[this.TIME_OUT];
+                    else if (result === this.DISCONNECTED) output.message = this.LANG[this.DISCONNECTED];
+                    return output;
+                }
+            }
+
             let retry = _retryPowerOn;
 
-            if (!keycode || _isOnPowerCycle || !this.isConnected()) return output;
+            if (!keycode || _isOnPowerCycle) return output;
 
             _isOnPowerCycle = true;
-            await this.state();
+            await _state();
 
             _emitUpdate(`power${isPowerOn ? `On` : `Off`}`);
             if ((isPowerOn && !_isAwake) || (!isPowerOn && _isAwake)) {
                 do {
                     await this.sendKeycode(keycode || `KEYCODE_POWER`);
                     await _sleep(100);
-                    await this.state();
+                    await _state();
 
                     _emitUpdate(`debugPower${isPowerOn ? `On` : `Off`}`, { awake: _isAwake }, retry);
 
@@ -209,7 +232,7 @@ class adb extends EventEmitter {
 
             // Emit events
             _isOnPowerCycle = false;
-            await this.state(true);
+            await _state(true);
 
             return output;
         }
@@ -218,6 +241,7 @@ class adb extends EventEmitter {
          * @param {string} keycode - (optional) ADB keycode for power on/wake up
          */
         this.powerOn = async keycode => {
+            if (_isAwake) return { result: true, message: `Device already awake` };
             return await _power(keycode || `KEYCODE_POWER`);
         }
         /**
@@ -225,6 +249,7 @@ class adb extends EventEmitter {
          * @param {string} keycode - (optional) ADB keycode for power off/sleep
          */
         this.powerOff = async keycode => {
+            if (_isAwake) return { result: true, message: `Device already sleep` };
             return await _power(keycode || `KEYCODE_POWER`, false);
         }
         /**
@@ -233,25 +258,39 @@ class adb extends EventEmitter {
         this.getPowerStatus = () => {
             return _isAwake;
         }
-
         /**
          * Statuses helper
          * @param {boolean} forceEmit - set `true` to force emit the events
-         */
-        this.state = async forceEmit => {
+        */
+        const _state = async forceEmit => {
+            let output = { result: false, message: `` };
+
             const { result, message } = await this.adbShell(`dumpsys power | grep mHoldingDisplay`);
-            const output = result ? message.split(`=`) : [];
+            output = result ? message.split(`=`) : [];
             if (!result || output.length <= 0) return { result: false, message: this.LANG[this.TIME_OUT] };
 
             forceEmit = forceEmit || false;
             const state = output[1] === `true` ? true : false;
             if (forceEmit || state != _isAwake || _firstRun) {
+                const oldIsAwake = _isAwake;
                 _isAwake = state;
-                if (forceEmit || !_isOnPowerCycle || _firstRun) _emitUpdate(_isAwake ? `awake` : `sleep`);
+                if (_isAwake !== oldIsAwake && (forceEmit || !_isOnPowerCycle || _firstRun))
+                    _emitUpdate(_isAwake ? `awake` : `sleep`);
             }
 
-            return _isAwake;
+            return { result: _isAwake, message: _isAwake ? 'Device is awake' : `Device is sleep` };
         }
+        /**
+         * Statuses helper
+         * @param {boolean} forceEmit - set `true` to force emit the events
+        */
+        this.state = async forceEmit => {
+            if (!this.isConnected()) return disconnectedMessage;
+            if (!_isAwake) return sleepMessage;
+
+            return _state(forceEmit);
+        }
+
 
         // Emiter
         const _emitUpdate = function () {
@@ -351,27 +390,51 @@ class adb extends EventEmitter {
          * @param {string} param - app id, or adb shell command, or os shell command(s) with `shell` identifier at the beginning.
          */
         this.launchApp = async param => {
+            let output = { result: false, message: `` };
+
+            // Check if the device is awake, if not wake it
+            if (!_isAwake) {
+                output = await this.powerOn();
+
+                // If device can't be turned on, exit
+                if (!output.result) {
+                    output.message = `Failed to turn on the device, unable the lunch: ${param}`
+                    return output;
+                }
+            }
+
+            if (!_currentAppID) await _currentApp();
+
+            // Check parameters
             param = param.trim() || ``;
             const params = param.split(` `);
 
             if (params[0].toLowerCase() == `shell`) {
                 // Run shell command becuase it have 'shell' indenfier in the front
                 params.splice(0, 1);
-                return await this.osShell(params.join(` `), params.join(``));
+                output = await this.osShell(params.join(` `), params.join(``));
             } else if (params.length == 1 && param.includes(`.`)) {
-                // Launch app using monkey
-                const output = await this.adbShell(`monkey -p ${param} 10`);
+                // Lunch app
+                output = { result: true, message: `App already launched: ${param}` };
 
-                if (output.message.includes("monkey aborted")) {
-                    output.result = false;
-                    output.message = `Failed to launch app: ${param}`;
-                } else output.message = `App launched: ${param} `;
+                if (param !== _currentAppID) {
+                    // Launch app using monkey
+                    output = await this.adbShell(`monkey -p ${param} 10`);
 
-                return output;
+                    if (output.message.includes("monkey aborted")) {
+                        output.result = false;
+                        output.message = `Failed to launch app: ${param}`;
+                    } else {
+                        output.result = true;
+                        output.message = `App launched: ${param}`;
+                    }
+                }
             } else {
-                // Launch adb shell command
-                return await this.adbShell(param);
+                // Launch adb shell command(s)
+                output = await this.adbShell(param);
             }
+
+            return output;
         }
 
         // Get playback status
@@ -444,17 +507,18 @@ class adb extends EventEmitter {
             } else _updateIsAlreadyRunning = true;
 
             await _connect();
-            await this.state();
+            await _state();
             await _checkTail();
             await _currentApp();
             await _currentPlayback();
+            _emitUpdate('firstrun');
 
             _firstRun = false;
 
             setInterval(() => {
                 Promise.all([
                     _connect(),
-                    this.state(),
+                    _state(),
                     _currentApp(),
                     _currentPlayback()
                 ]).then(output => {

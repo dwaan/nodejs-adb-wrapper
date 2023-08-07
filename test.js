@@ -6,35 +6,35 @@ let shield = new adb(ip, {
     interval: 1000
 });
 
-// Probably not connected yet, will throw error
-shield.state().then(({ result, message }) => {
-    if (result) console.log("State - Success:", message);
-    else console.log("State - Error:", message);
-})
+// Probably not connected yet, will output error
+shield.state().then(output => {
+    console.log(`🔴 -`, "State:", output.message);
+});
+console.log(`🚀 -`, "1. Launching existing apps");
+shield.launchApp("com.google.android.youtube.tv").then(output => {
+    console.log(`🔴 -`, output.message);
+});
 
 // Function will be run after connected
 const runAfterConnected = async () => {
-    shield.launchApp(`shell adb devices`).then(({ result, message }) => {
-        if (result) console.log("Shell - success:", message);
-        else console.log("Shell - failed:", message);
-    });
+    shield.launchApp(`shell adb devices`).then(output => {
+        console.log(`💻 -`, "Shell", output.message);
 
-    // console.log("Manually turn on");
-    // shield.powerOn().then(({ result, message }) => {
-    //     if (result) console.log("Power on - success:", message);
-    //     else console.log("Power on - failed:", message);
+        console.log(`🚀 -`, "2. Launching existing apps");
+        shield.launchApp("com.google.android.youtube.tv").then(output => {
+            console.log(`🔴 -`, output.message);
 
-    console.log("Launching existing apps");
-    shield.launchApp("com.google.android.youtube.tv").then(({ result, message }) => {
-        console.log(result, message);
-
-        console.log("Launching non existing apps");
-        shield.launchApp("com.apple.atve.androidtv.appletv").then(({ result, message }) => {
-            console.log(result, message);
+            console.log(`🚀 -`, "Launching non existing apps");
+            shield.launchApp("com.nonexisting.app").then(output => {
+                console.log(`🔴 -`, output.message);
+            });
         });
-
     });
-    // });
+
+    console.log("Manually turn on");
+    shield.powerOn().then(output => {
+        console.log(`📺 -`, "Power:", output.message);
+    });
 }
 
 // Do something when receiving emit
@@ -45,9 +45,7 @@ shield.on(`update`, async (type, message, debug) => {
         case `firstrun`:
             console.log("🚩 - First time device is connected");
 
-            // runAfterConnected();
-            console.log("Running monkey");
-            await shield.monkey();
+            runAfterConnected();
 
             break;
         case `connecting`:
@@ -57,7 +55,7 @@ shield.on(`update`, async (type, message, debug) => {
             console.log("🚩 - Timeout...");
             break;
         case `status`:
-            if (count++ == 0) console.info(Date());
+            if (count++ == 0) console.info('⚪️ -', Date());
             if (count >= 60) count = 0;
             break;
         case `connected`:
