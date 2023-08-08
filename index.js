@@ -52,6 +52,10 @@ class adb extends EventEmitter {
         const _playbackDelayOff = config.playbackDelayOff || 10000;
         const _retryPowerOn = config.retryPowerOn || 5;
 
+        // Keycode
+        const _keycodePowerOn = config.keycodePowerOn || 'KEYCODE_POWER';
+        const _keycodePowerOff = config.keycodePowerOff || 'KEYCODE_POWER';
+
         // Device state
         let _connected = this.DISCONNECTED;
         let _currentAppID = false;
@@ -212,7 +216,7 @@ class adb extends EventEmitter {
                 do {
                     await this.sendKeycode(keycode || `KEYCODE_POWER`);
                     await _sleep(100);
-                    await _state();
+                    await _state(true);
 
                     _emitUpdate(`debugPower${isPowerOn ? `On` : `Off`}`, { awake: _isAwake }, retry);
 
@@ -242,7 +246,7 @@ class adb extends EventEmitter {
          */
         this.powerOn = async keycode => {
             if (_isAwake) return { result: true, message: `Device already awake` };
-            return await _power(keycode || `KEYCODE_POWER`);
+            return await _power(keycode || _keycodePowerOn || `KEYCODE_POWER`);
         }
         /**
          * Turn off device
@@ -250,7 +254,7 @@ class adb extends EventEmitter {
          */
         this.powerOff = async keycode => {
             if (!_isAwake) return { result: true, message: `Device already sleep` };
-            return await _power(keycode || `KEYCODE_POWER`, false);
+            return await _power(keycode || _keycodePowerOff || `KEYCODE_POWER`, false);
         }
         /**
          * Get power information

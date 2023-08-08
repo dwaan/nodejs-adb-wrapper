@@ -21,6 +21,8 @@ Check and run [test.js](./test.js) for complete examples
   * *timeout* - Request timeout in milliseconds, default: 1000
   * *playbackDelayOff* - Playback delay before it considered there's no media playing, default: 10000
   * *retryPowerOn* - How many retry before power on request considered failure, default: 10
+  * *keycodePowerOn* - Keycode to power on device, default: 'KEYCODE_POWER'
+  * *keycodePowerOff* - Keycode to power on device, default: 'KEYCODE_POWER'
 
 ## Methods
 
@@ -40,6 +42,7 @@ Check if Android device have `tail` command.
 Wrapper to run ADB command
 
 **parameters**
+Available parameters:
 
 * **params**: string - the adb command, eg: `dumpsys`
 
@@ -54,6 +57,7 @@ Wrapper to run ADB command
 Wrapper to run shell command
 
 **parameters**
+Available parameters:
 
 * **params**: string - the shell command, eg: `dumpsys`
 * *id*: string - process id
