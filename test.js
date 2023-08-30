@@ -1,6 +1,6 @@
 var adb = require('.');
 
-let shield = new adb(`192.168.1.108`, {
+let shield = new adb(`192.168.1.115`, {
     path: "/usr/local/bin/adb",
     interval: 1000,
     keycodePowerOn: `KEYCODE_WAKEUP`,
@@ -20,13 +20,20 @@ shield.launchApp("com.google.android.youtube.tv").then(output => {
 
 // Function will be run after connected, see on update events
 const runAfterConnected = async _ => {
+    await shield.powerOn();
     console.log(`💻 - 1`, await shield.launchApp(`shell echo "Hi"`));
     console.log(`💻 - 2`, await shield.launchApp(`shell echo "How are you?"`));
+    await shield.sleep(1000);
     console.log(`📱 - 1`, await shield.launchApp(`echo "Hi"`));
     console.log(`📱 - 2`, await shield.launchApp(`echo "How are you?"`));
-    console.log(`⌨️ - 1`, await shield.sendKeycode(`KEYCODE_DPAD_DOWN`));
-    console.log(`⌨️ - 2`, await shield.sendKeycode(`KEYCODE_DPAD_UP`));
-    shield.powerOff();
+    console.log(`📱 - 2`, await shield.launchApp("com.google.android.youtube"));
+    await shield.sleep(1000);
+    console.log(`📱 - 2`, await shield.launchApp("com.duckduckgo.mobile.android"));
+    // await shield.sendKeycode(`KEYCODE_A KEYCODE_B KEYCODE_C`);
+    await shield.sleep(1000);
+    console.log(`⌨️ - 2`, await shield.sendKeycode(`KEYCODE_HOME`));
+    await shield.sleep(1000);
+    // await shield.powerOff();
 }
 
 // Connecting to device

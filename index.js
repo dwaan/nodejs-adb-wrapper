@@ -338,6 +338,11 @@ class adb extends EventEmitter {
          */
         const _sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
         /**
+         * Sleep of x miliseconds
+         * @param {number} ms - number in miliseconds to sleep
+         */
+        this.sleep = _sleep;
+        /**
          * Check if device support tail command
          */
         const _checkTail = async () => {
