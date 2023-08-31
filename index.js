@@ -524,7 +524,6 @@ class adb extends EventEmitter {
 
             if (keycodes[0].toLowerCase() == `shell`) {
                 // It's a shell command becuase it have 'shell' indenfier in the front
-                isShell = true;
                 for (let i = 1; i < keycodes.length; i++) finalKeycodes += `${keycodes[i]} `;
                 return await this.osShell(finalKeycodes);
             } else {
