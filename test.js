@@ -26,12 +26,13 @@ const runAfterConnected = async _ => {
     await shield.sleep(1000);
     console.log(`📱 - 1`, await shield.launchApp(`echo "Hi"`));
     console.log(`📱 - 2`, await shield.launchApp(`echo "How are you?"`));
-    console.log(`📱 - 2`, await shield.launchApp("com.google.android.youtube"));
+    console.log(`📱 - 3`, await shield.launchApp("com.google.android.youtube"));
+    console.log(`📱 - 4`, await shield.launchApp("ls /sdcard/"));
     await shield.sleep(1000);
-    console.log(`📱 - 2`, await shield.launchApp("com.duckduckgo.mobile.android"));
-    // await shield.sendKeycode(`KEYCODE_A KEYCODE_B KEYCODE_C`);
-    await shield.sleep(1000);
-    console.log(`⌨️ - 2`, await shield.sendKeycode(`KEYCODE_HOME`));
+    console.log(`⌨️ - 1`, await shield.sendKeycode(`KEYCODE_DPAD_DOWN KEYCODE_DPAD_DOWN KEYCODE_DPAD_DOWN`));
+    console.log(`⌨️ - 2`, await shield.sendKeycode(`shell ls`));
+    console.log(`⌨️ - 3`, await shield.sendKeycode(`shell echo "Hi"`));
+    console.log(`⌨️ - 4`, await shield.sendKeycode(`KEYCODE_HOME`));
     await shield.sleep(1000);
     // await shield.powerOff();
 }
