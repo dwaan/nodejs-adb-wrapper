@@ -1,7 +1,6 @@
 `use strict`;
 
-const { exec, spawn } = require(`child_process`);
-const fs = require('fs');
+const { exec, execFile, spawn } = require(`child_process`);
 const crypto = require('crypto');
 const EventEmitter = require(`events`);
 
@@ -20,6 +19,8 @@ class adb extends EventEmitter {
     FAILED = 6;
     CONNECTED = 7;
     NO_ADB = 8;
+    ERROR_1 = 9;
+    ERROR_127 = 10;
 
     // Lang
     LANG = [
@@ -31,7 +32,9 @@ class adb extends EventEmitter {
         `Timeout.`,
         `Failed.`,
         `Connected.`,
-        `Can't fine ADB executable file.`
+        `Can't fine ADB executable file.`,
+        `Command failed.`,
+        `Inaccessible or not found.`
     ];
 
     constructor(ip, config = {}) {
@@ -49,6 +52,7 @@ class adb extends EventEmitter {
         const _playbackDelayOff = config.playbackDelayOff || 10000;
         const _retryPowerOn = config.retryPowerOn || 5;
         const _debug = config.debug || false;
+        const _debugUpdate = config.debugUpdate || false;
 
         // Keycode
         const _keycodePowerOn = config.keycodePowerOn || 'KEYCODE_POWER';
@@ -73,9 +77,10 @@ class adb extends EventEmitter {
         // Current class
         const _this = this;
 
-        // Spawn variables
-        let _mainProcess = undefined;
-        let _osShellProcess = [];
+        // Process variables
+        let _connected = false;
+        let _adbProcess = [];
+        let _osProcess = [];
         let _updateIsAlreadyRunning = false;
 
         //
@@ -94,205 +99,64 @@ class adb extends EventEmitter {
         }
 
         const _resetChildProcess = _ => {
-            _mainProcess = undefined;
-            _osShellProcess = [];
-        }
+            _connected = false;
+            _osProcess = [];
 
-        // Async spawn helper with timeout
-        const _spawn = command => {
-            return new Promise(resolve => {
-                const _spawn = spawn(command, {
-                    stdio: ['inherit', 'pipe', 'pipe'],
-                    encoding: 'utf-8',
-                    shell: true
-                });
-                let timeout = setTimeout(() => {
-                    _spawn.kill();
-                    resolve('Process killed due to timeout');
-                }, _timeout);
-
-                let stdoutData = '';
-                let stderrData = '';
-
-                _spawn.stdout.on('data', data => {
-                    stdoutData += data.toString();
-                });
-
-                _spawn.stderr.on('data', data => {
-                    stderrData += data.toString();
-                });
-
-                _spawn.on('close', code => {
-                    _spawn.kill();
-                    clearTimeout(timeout);
-
-                    if (code !== 0) {
-                        resolve(`Process exited with code ${code}\n${stderrData}`);
-                    } else {
-                        resolve(stdoutData.trim());
-                    }
-                });
+            _adbProcess.forEach(child => {
+                child.kill();
             });
-        };
-
-        let _checkDevice = null;
-        this.checkDevice = async _ => {
-            let output = { result: true, message: `Connected to: ${_ip}` };
-            let result = await _spawn(`${_path} connect ${_ip}`);
-
-            if (
-                result.includes(`Process killed due to timeout`) ||
-                result.includes(`Host is down`) ||
-                result.includes(`Connection refused`)
-            ) {
-                _checkDevice = false;
-                output.result = false;
-                output.message = `Can't connect to: ${_ip}`;
-            } else {
-                _checkDevice = true;
-            }
-
-            return output;
-        }
-        this.deviceExist = async _ => {
-            if (_checkDevice === null) await this.checkDevice();
-            return _checkDevice;
+            _adbProcess = [];
         }
 
-        this.closeAdb = () => {
-            if (!_mainProcess) {
-                this.log('Process not started.');
-                return
-            }
-
-            this.log('Process close.');
-            _mainProcess.stdin.end();
-            _resetChildProcess();
-        }
-
-        /**
-        * Connect to device
-        */
-        const _connect = async _ => {
-            if (!await this.deviceExist()) return { result: false, message: this.LANG[this.DISCONNECTED] };
-            if (this.isConnected()) return { result: true, message: '' };
-
-            return new Promise(async resolve => {
-                // One time listeners to chech if everything is ok
-                const errorListener = error => {
-                    this.error('Error starting process:', error.message);
-
-                    removeListeners(`Error message: ${error.message}`);
-                    resolve({ result: false, message: `Error message: ${error.message}` });
-                }
-                const permanentCloseListener = async code => {
-                    let message = `Child process exited with code ${code}`;
-
-                    if (code === -2) message = `Can't find ADB executable code ${code}`;
-                    else if (code === 0) message = `ADB disconnected code ${code}`;
-                    this.error(message);
-
-                    removeListeners(message);
-                    _resetChildProcess();
-
-                    if (code !== -2) {
-                        _emitUpdate(`connecting`);
-                        this.log(`Reconnecting..`);
-
-                        await _sleep(1000);
-                        await this.checkDevice();
-                        await _connect();
-                    }
-                }
-                const outputListener = data => {
-                    const message = data.toString().trim();
-
-                    _emitUpdate(`connected`, message);
-
-                    resolve({ result: true, message: message });
-                }
-                // Remove all Listener
-                const removeListeners = message => {
-                    if (_mainProcess) {
-                        _mainProcess.off('error', errorListener);
-
-                        if (_mainProcess.stdout) _mainProcess.stdout.off('data', outputListener);
-                        if (_mainProcess.stderr) _mainProcess.stderr.off('data', outputListener);
-
-                        _emitUpdate(`disconnected`, message);
-                    }
-                }
-
-                this.log('Running process:', _path);
-                _mainProcess = spawn(_path, [`-s`, `${_ip}`, `shell`]); // Start adb shell
-
-                // Test command to exit from async, exit with true
-                _mainProcess.stdin.write(`echo "$(getprop ro.product.model) | $(getprop ro.product.manufacturer) | $(getprop ro.serialno)"\n`);
-
-                _mainProcess.stdout.once('data', outputListener);
-                _mainProcess.stderr.once('data', outputListener);
-
-                // Something wrong, exit with false
-                _mainProcess.once('error', errorListener);
-
-                // Output when spawn is close
-                _mainProcess.on('close', permanentCloseListener);
-            });
-        }
-        this.connect = _connect;
-        /**
-        * Get the status of device
-        */
-        this.isConnected = () => _mainProcess === undefined ? false : true;
-
-        let _writeToFile = false;
-        const writeToFile = message => {
-            const filePath = 'adb.log';
-
-            if (!_writeToFile) {
-                // Write data to the file
-                fs.writeFile(filePath, message, (err) => {
-                    if (err) {
-                        console.error('Error writing to the file:', err);
-                    }
-                    _writeToFile = true;
-                });
-            } else {
-                fs.appendFile(filePath, message, (err) => {
-                    if (err) {
-                        console.error('Error appending to the file:', err);
-                    }
-                });
-            }
-        }
         function generateUniqueId(str) {
             const hash = crypto.createHash('sha256'); // You can choose a different hash algorithm if needed
             hash.update(str);
             return hash.digest('hex');
         }
+
         /**
         * Run adb shell or shell command
         */
-        const _adb = command => {
-            if (!this.isConnected()) return { result: false, message: this.LANG[this.DISCONNECTED] };
-            // const id = generateUniqueId(command);
+        const _adb = (command, baypass) => {
+            if (!this.isConnected() && !baypass) return { result: false, message: this.LANG[this.DISCONNECTED] };
+            const id = generateUniqueId(command.toString());
 
-            return new Promise(resolve => {
-                // Create spawn process if not exist yet
-                const process = spawn(_path, [`-s`, `${_ip}`, `shell`]); // Start adb shell
+            return new Promise(async (resolve) => {
+                _adbProcess[id] = execFile(_path, command, (error, stdout, stderr) => {
+                    let message = error ? stderr.trim() : stdout.trim();
+                    let result = error ? false : true;
+                    let useErrorMessage = false;
 
-                // Set a timeout for the command processing
-                const timeout = setTimeout(_ => output({ result: false, message: _this.LANG[_this.TIMEOUT] }), _timeout);
+                    if (error && _debugUpdate) {
+                        command = command[command.length - 1].trim();
 
-                // Catch the output
-                const output = output => {
-                    process.stdin.end();
-                    clearTimeout(timeout);
-                    resolve(output);
-                }
-                process.stdout.on('data', data => output({ result: true, message: data.toString().trim() }));
-                process.stderr.on('data', data => output({ result: false, message: data.toString().trim() }));
-                process.stdin.write(`${command}\n`);
+                        if (error.errno) this.log(`errno:`, error.errno, message, command);
+
+                        useErrorMessage = true;
+                        message = this.LANG[this.TIMEOUT];
+
+                        if (error.code) {
+                            switch (error.code) {
+                                case 1:
+                                    message = this.LANG[this.ERROR_1];
+                                    break;
+                                case 127:
+                                    message = this.LANG[this.ERROR_127];
+                                    break;
+                            }
+                            this.log(`code:`, error.code, message, command);
+                        }
+
+                        if (error.killed) this.log(`killed:`, error.killed, message, command);
+                    }
+
+                    resolve({ result, message: (result || useErrorMessage) ? message : this.LANG[this.TIMEOUT] });
+                }, {
+                    windowsHide: true
+                });
+
+                // Kill process when timeout
+                _autoKill(id);
             });
         }
         /**
@@ -304,7 +168,7 @@ class adb extends EventEmitter {
             const id = generateUniqueId(params);
 
             return new Promise(async resolve => {
-                _osShellProcess[id] = exec(params, (error, stdout, stderr) => {
+                _osProcess[id] = exec(params, (error, stdout, stderr) => {
                     let message = stdout.trim() || stderr.trim();
                     let result = error ? false : true;
 
@@ -312,8 +176,8 @@ class adb extends EventEmitter {
                 });
 
                 // Auto kill if process is too long
-                if (_osShellProcess[id].timeout) clearTimeout(_osShellProcess[id].timeout);
-                _osShellProcess[id].timeout = setTimeout(() => _osShellProcess[id].kill(), _timeout);
+                if (_osProcess[id].timeout) clearTimeout(_osProcess[id].timeout);
+                _osProcess[id].timeout = setTimeout(() => _osProcess[id].kill(), _timeout);
             });
         }
         /**
@@ -322,15 +186,72 @@ class adb extends EventEmitter {
          */
         this.adbShell = async function () {
             let params = "";
-            for (let i = 0; i < arguments.length; i++) params += (arguments[i] + (i == arguments.length - 1 ? `` : ` && `));
+            const baypass = arguments[arguments.length - 1] === true ? true : false;
+            const length = baypass ? arguments.length - 1 : arguments.length;
 
-            // writeToFile(`Run:\n${params}\n\n`);
-            const output = await _adb(params);
-            // writeToFile(`Result '${params}'':\n${output.result}\n\n`);
-            // writeToFile(`Message '${params}':\n${output.message}\n\n---\n\n`);
+            for (let i = 0; i < length; i++) params += (arguments[i] + (i == length - 1 ? `` : ` && `));
+
+            const output = await _adb([`-s`, `${_ip}`, `shell`, params], baypass);
 
             return arguments ? output : { result: false, message: '' };
         }
+
+        let _checkDevice = true;
+        this.checkDevice = async _ => {
+            let output = { result: true, message: `Connected to: ${_ip}` };
+            let result = await _adb([`connect`, `${_ip}`], true);
+
+            if (
+                result.message.includes(_this.LANG[this.TIMEOUT]) ||
+                result.message.includes(`Host is down`) ||
+                result.message.includes(`Connection refused`)
+            ) {
+                output.result = false;
+                output.message = `Can't connect to: ${_ip}`;
+            }
+
+            return output;
+        }
+        this.deviceExist = async _ => {
+            if (_checkDevice) await this.checkDevice();
+            return _checkDevice;
+        }
+
+        this.closeAdb = () => {
+            if (!_connected) {
+                this.log('Process not started.');
+                return
+            }
+
+            _resetChildProcess();
+            this.log('Process close.');
+        }
+
+        /**
+        * Connect to device
+        */
+        let _lastConnectStatus = null;
+        const _connect = async _ => {
+            if (_firstRun) this.log('Running process:', _path);
+
+            this.deviceExist();
+
+            const isConnected = this.isConnected();
+            let output = await this.adbShell(`echo "$(getprop ro.product.model) | $(getprop ro.product.manufacturer) | $(getprop ro.serialno)"`, true);
+
+            if (output.result && !output.message.includes('not found') && _lastConnectStatus != isConnected) _emitUpdate(`connected`, output.message);
+            else if (_lastConnectStatus != isConnected) _emitUpdate(`disconnected`, output.message);
+
+            _checkDevice = !output.result;
+            if (_lastConnectStatus != isConnected) _lastConnectStatus = isConnected;
+
+            return output;
+        }
+        this.connect = _connect;
+        /**
+        * Get the status of device
+        */
+        this.isConnected = () => !_checkDevice;
 
         /**
          * Sleep of x miliseconds
@@ -470,11 +391,11 @@ class adb extends EventEmitter {
             let output = { result: false, message: `Current app is undetermined while device is sleep` };
             if (!_isAwake && !_firstRun) return output;
 
-            output.message == ``;
+            output.message = ``;
 
             if (_inputUseWindows && !_inputError) {
                 output = await this.adbShell(`dumpsys window windows | grep -E mFocusedApp`);
-                if (output.message !== this.LANG[this.TIMEOUT]) _inputUseActivities = false;
+                if (output.message !== this.LANG[this.TIMEOUT] && output.message !== this.LANG[this.ERROR_1]) _inputUseActivities = false;
             }
 
             if (_inputUseActivities && !_inputError) {
@@ -484,8 +405,8 @@ class adb extends EventEmitter {
 
             if (_inputUseWindows && _inputUseActivities) _inputError = true;
             else if (!_inputUseWindows && !_inputUseActivities) _inputUseWindows = _inputUseActivities = true;
-            else if (output.message === this.LANG[this.TIMEOUT]) output.message = this.HOME_APP_ID;
-            else if (output.message) {
+            else if (output.message === this.LANG[this.DISCONNECTED] || output.message === this.LANG[this.TIMEOUT]) output.message = this.HOME_APP_ID;
+            else {
                 let messages = output.message.trim().split(`/`);
                 let temp = messages[0].split(` `);
 
@@ -505,7 +426,6 @@ class adb extends EventEmitter {
             output.message = _currentAppID;
             return output;
         }
-
 
         /**
          * Get current app id
@@ -592,17 +512,28 @@ class adb extends EventEmitter {
         }
 
         // Get playback status
+        var detectUsingAlexa = true;
+        var detectUsingMediaButton = true;
         const _getCurrentPlayback = () => {
             return new Promise(resolve => {
-                Promise.all([
-                    this.adbShell(`dumpsys media_session | grep 'AlexaMediaPlayerRuntime'`),
-                    this.adbShell(`dumpsys media_session | grep 'Media button session is'`),
-                    this.adbShell(`dumpsys media_session | grep 'state=PlaybackState {state=3'`),
-                    this.adbShell(`dumpsys audio | grep 'player piid:' | grep ' state:' ${_canUseTail ? '| tail -1' : ''}`)
-                ]).then(values => {
+                let commands = [];
+
+                if (detectUsingAlexa) commands.push(this.adbShell(`dumpsys media_session | grep 'AlexaMediaPlayerRuntime'`));
+                else commands.push({ result: false, message: `` });
+
+                if (detectUsingMediaButton) commands.push(this.adbShell(`dumpsys media_session | grep 'Media button session is'`));
+                else commands.push({ result: false, message: `` });
+
+                commands.push(this.adbShell(`dumpsys media_session | grep 'state=PlaybackState {state=3'`));
+                commands.push(this.adbShell(`dumpsys audio | grep 'player piid:' | grep ' state:' ${_canUseTail ? '| tail -1' : ''}`));
+
+                Promise.all(commands).then(values => {
                     // Trim audio when tail is not supported
                     values[3].message = values[3].message.trim().split("\n");
                     values[3].message = values[3].message[values[3].message.length - 1].trim();
+
+                    if (!values[0].result) detectUsingAlexa = false;
+                    if (!values[1].result) detectUsingMediaButton = false;
 
                     let message = `1. Alexa Media: ${values[0].message}\n2. Media: ${values[1].message}\n3. Playback State: ${values[2].message}\n4. Audio State: ${values[3].message}`;
                     let result = ((_currentAppID == this.HOME_APP_ID || values[1].message.includes(_currentAppID) || values[0].message.includes(`AlexaMediaPlayerRuntime`)) && values[2].message.includes(`state=3`)) ? true : values[3].message.includes("state:started") ? true : false;
@@ -659,28 +590,46 @@ class adb extends EventEmitter {
                 return output;
             } else _updateIsAlreadyRunning = true;
 
-            this.log(`connect`, await _connect());
-            this.log(`checktail`, await _checkTail()); // Only need to run once
-            this.log(`state`, await _state());
-            this.log(`currentapp`, await _currentApp());
-            this.log(`currentplayback`, await _currentPlayback());
-            _emitUpdate('firstrun');
+            try {
+                this.log(`connect`, await _connect());
+                this.log(`checktail`, await _checkTail());
+                this.log(`state`, await _state());
+                this.log(`currentapp`, await _currentApp());
+                this.log(`currentplayback`, await _currentPlayback());
+                _emitUpdate('firstrun');
+            } catch (error) {
+                _emitUpdate(`fatalerror`, error);
+            }
 
             _firstRun = false;
 
             setInterval(() => {
-                Promise.all([
-                    _connect(),
-                    _state(),
-                    _currentApp(),
-                    _currentPlayback()
-                ]).then(output => {
-                    if (callback) callback(output);
-                });
-                _emitUpdate(`status`);
+                try {
+                    Promise.all([
+                        _connect(),
+                        _state(),
+                        _currentApp(),
+                        _currentPlayback()
+                    ]).then(output => {
+                        // console.log(output[2]);
+                        if (callback) callback(output);
+                    });
+
+                    _emitUpdate(`status`);
+                } catch (error) {
+                    _emitUpdate(`fatalerror`, error);
+                }
+
             }, _interval);
 
             return output;
+        }
+
+        const _autoKill = id => {
+            if (_adbProcess[id].loop) clearTimeout(_adbProcess[id].loop);
+            _adbProcess[id].loop = setTimeout(() => {
+                _adbProcess[id].kill();
+            }, _timeout);
         }
     }
 }
