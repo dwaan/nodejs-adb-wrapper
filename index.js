@@ -1,6 +1,6 @@
 `use strict`;
 
-const { exec, execFile, spawn } = require(`child_process`);
+const { exec, execFile } = require(`child_process`);
 const crypto = require('crypto');
 const EventEmitter = require(`events`);
 
@@ -57,6 +57,10 @@ class adb extends EventEmitter {
         // Keycode
         const _keycodePowerOn = config.keycodePowerOn || 'KEYCODE_POWER';
         const _keycodePowerOff = config.keycodePowerOff || 'KEYCODE_POWER';
+
+        // State
+        const _stateAdbCommand = config.stateAdbCommand || `dumpsys power | grep mHoldingDisplaySuspendBlocker=`;
+        const _stateAdbOutputAwake = config.stateAdbOutputAwake || `true`;
 
         // Device state
         let _currentAppID = false;
@@ -345,13 +349,13 @@ class adb extends EventEmitter {
          * @param {boolean} forceEmit - set `true` to force emit the events
         */
         const _state = async (forceEmit = false) => {
-            const { result, message } = await this.adbShell(`dumpsys power | grep mHoldingDisplay`);
+            const { result, message } = await this.adbShell(_stateAdbCommand);
             let output = { result: false, message: `` };
 
             output = result ? message.split(`=`) : [];
             if (!result || output.length <= 0) return { result: false, message: this.LANG[this.TIMEOUT] };
 
-            const state = output[1] === `true` ? true : false;
+            const state = output[1] === _stateAdbOutputAwake ? true : false;
             if (forceEmit || state !== _isAwake || _firstRun) {
                 const oldIsAwake = _isAwake;
                 _isAwake = state;

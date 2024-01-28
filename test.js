@@ -6,7 +6,9 @@ let shield = new adb(`192.168.1.108`, {
     keycodePowerOn: `KEYCODE_WAKEUP`,
     keycodePowerOff: `KEYCODE_SLEEP`,
     debug: true,
-    debugUpdate: false
+    debugUpdate: false,
+    stateAdbCommand: "dumpsys power | grep mWakefulness=",
+    stateAdbOutputAwake: "Awake"
 });
 
 // State will fail since device is not connected yet
