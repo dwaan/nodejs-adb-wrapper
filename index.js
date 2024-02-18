@@ -62,6 +62,9 @@ class adb extends EventEmitter {
         const _stateAdbCommand = config.stateAdbCommand || `dumpsys power | grep mHoldingDisplaySuspendBlocker=`;
         const _stateAdbOutputAwake = config.stateAdbOutputAwake || `true`;
 
+        // Custom launcher App Id
+        const launcherid = config.launcherid || false;
+
         // Device state
         let _currentAppID = false;
         let _isAwake = false;
@@ -419,6 +422,7 @@ class adb extends EventEmitter {
 
                 temp = messages[0].toLowerCase();
                 if (temp.includes(`launcher`) || temp.includes(`mainactivity`) || temp.includes(`recentstvactivity`)) output.message = this.HOME_APP_ID;
+                else if (launcherid !== false && temp.includes(launcherid)) output.message = this.HOME_APP_ID;
                 else output.message = messages[0];
             }
 
@@ -446,11 +450,7 @@ class adb extends EventEmitter {
             const keycodes = keycode.split(` `);
             let finalKeycodes = ``;
 
-            if (keycodes[0].toLowerCase() == `shell`) {
-                // It's a shell command becuase it have 'shell' indenfier in the front
-                for (let i = 1; i < keycodes.length; i++) finalKeycodes += `${keycodes[i]} `;
-                return await this.osShell(finalKeycodes);
-            } else {
+            if (keycodes[0].toLowerCase().startsWith(`keycode_`)) {
                 this.log(`Keycode(s): ${keycodes}`);
                 // It's a keycode or combination of keycodes
                 for (let i = 0; i < keycodes.length; i++) {
@@ -460,6 +460,9 @@ class adb extends EventEmitter {
                 finalKeycodes = `${finalKeycodes}`;
                 await this.adbShell(finalKeycodes); // input keyevent doesn't output anything
                 return { result: true, message: keycode };
+            } else {
+                // Launch shell command(s), adb shell command(s), or app
+                return await this.launchApp(keycode);
             }
         }
 
